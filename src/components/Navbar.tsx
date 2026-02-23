@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Dashboard" },
-  { href: "/customers", label: "Customers" },
-  { href: "/orders", label: "Orders" },
+  { href: "/pipeline", label: "Pipeline" },
+  { href: "/prospects", label: "Prospects" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/calls", label: "Calls" },
 ];
 
 export default function Navbar() {
@@ -19,7 +21,7 @@ export default function Navbar() {
           {/* Brand */}
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-bold tracking-tight text-white">
-              Bullfit
+              BullFit
             </span>
             <span className="rounded bg-indigo-600 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
               CRM
