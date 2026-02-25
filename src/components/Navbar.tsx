@@ -12,6 +12,7 @@ const links = [
   { href: "/tasks", label: "Tasks" },
   { href: "/calls", label: "Calls" },
   { href: "/reporting", label: "Reports" },
+  { href: "/sequences", label: "Sequences" },
 ];
 
 export default function Navbar() {

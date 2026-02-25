@@ -788,6 +788,84 @@ export const STAGE_CHECKLISTS: StageChecklist[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Templates & Sequences Types
+// ---------------------------------------------------------------------------
+
+export interface Template {
+  id: string;
+  name: string;
+  category: string;
+  subject?: string;
+  body: string;
+  stage?: string;
+  variables: string[];
+  is_active: boolean;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TemplateInput {
+  name: string;
+  category?: string;
+  subject?: string;
+  body: string;
+  stage?: string;
+  variables?: string[];
+}
+
+export interface Sequence {
+  id: string;
+  name: string;
+  description?: string;
+  target_stage?: string;
+  is_active: boolean;
+  created_by?: string;
+  step_count?: number;
+  active_enrollments?: number;
+  steps?: SequenceStep[];
+  enrollments?: SequenceEnrollment[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SequenceInput {
+  name: string;
+  description?: string;
+  target_stage?: string;
+}
+
+export interface SequenceStep {
+  id: string;
+  sequence_id: string;
+  step_order: number;
+  template_id?: string;
+  template_name?: string;
+  template_category?: string;
+  channel: string;
+  delay_days: number;
+  subject_override?: string;
+  body_override?: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface SequenceEnrollment {
+  id: string;
+  sequence_id: string;
+  opportunity_id: string;
+  current_step: number;
+  status: string;
+  enrolled_at: string;
+  next_step_due?: string;
+  completed_at?: string;
+  sequence_name?: string;
+  total_steps?: number;
+  opportunity_title?: string;
+  account_name?: string;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -1411,6 +1489,143 @@ export async function toggleChecklistItem(
   return request<ChecklistItem>(
     `/api/opportunities/${opportunityId}/checklist`,
     { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Templates
+// ---------------------------------------------------------------------------
+
+export async function getTemplates(params?: {
+  category?: string;
+  stage?: string;
+}): Promise<Template[]> {
+  const query = new URLSearchParams();
+  if (params?.category) query.set("category", params.category);
+  if (params?.stage) query.set("stage", params.stage);
+  const qs = query.toString();
+  return request<Template[]>(`/api/templates${qs ? `?${qs}` : ""}`);
+}
+
+export async function getTemplate(id: string): Promise<Template> {
+  return request<Template>(`/api/templates/${id}`);
+}
+
+export async function createTemplate(data: TemplateInput): Promise<Template> {
+  return request<Template>("/api/templates", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateTemplate(
+  id: string,
+  data: Partial<TemplateInput & { is_active: boolean }>
+): Promise<Template> {
+  return request<Template>(`/api/templates/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  await request<void>(`/api/templates/${id}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Sequences
+// ---------------------------------------------------------------------------
+
+export async function getSequences(): Promise<Sequence[]> {
+  return request<Sequence[]>("/api/sequences");
+}
+
+export async function getSequence(id: string): Promise<Sequence> {
+  return request<Sequence>(`/api/sequences/${id}`);
+}
+
+export async function createSequence(data: SequenceInput): Promise<Sequence> {
+  return request<Sequence>("/api/sequences", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateSequence(
+  id: string,
+  data: Partial<SequenceInput & { is_active: boolean }>
+): Promise<Sequence> {
+  return request<Sequence>(`/api/sequences/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSequence(id: string): Promise<void> {
+  await request<void>(`/api/sequences/${id}`, { method: "DELETE" });
+}
+
+export async function addSequenceStep(
+  sequenceId: string,
+  data: {
+    template_id?: string;
+    channel?: string;
+    delay_days?: number;
+    subject_override?: string;
+    body_override?: string;
+    notes?: string;
+  }
+): Promise<SequenceStep> {
+  return request<SequenceStep>(`/api/sequences/${sequenceId}/steps`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteSequenceStep(
+  sequenceId: string,
+  stepId: string
+): Promise<void> {
+  await request<void>(`/api/sequences/${sequenceId}/steps/${stepId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function enrollInSequence(
+  sequenceId: string,
+  opportunityId: string
+): Promise<SequenceEnrollment> {
+  return request<SequenceEnrollment>(`/api/sequences/${sequenceId}/enroll`, {
+    method: "POST",
+    body: JSON.stringify({ opportunity_id: opportunityId }),
+  });
+}
+
+export async function advanceEnrollment(
+  sequenceId: string,
+  enrollmentId: string
+): Promise<SequenceEnrollment> {
+  return request<SequenceEnrollment>(
+    `/api/sequences/${sequenceId}/enrollments/${enrollmentId}/advance`,
+    { method: "PATCH" }
+  );
+}
+
+export async function stopEnrollment(
+  sequenceId: string,
+  enrollmentId: string
+): Promise<SequenceEnrollment> {
+  return request<SequenceEnrollment>(
+    `/api/sequences/${sequenceId}/enrollments/${enrollmentId}/stop`,
+    { method: "PATCH" }
+  );
+}
+
+export async function getOpportunityEnrollments(
+  opportunityId: string
+): Promise<SequenceEnrollment[]> {
+  return request<SequenceEnrollment[]>(
+    `/api/sequences/enrollments/opportunity/${opportunityId}`
   );
 }
 
