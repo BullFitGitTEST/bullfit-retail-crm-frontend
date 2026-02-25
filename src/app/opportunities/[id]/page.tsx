@@ -8,13 +8,16 @@ import {
   updateOpportunity,
   moveOpportunityStage,
   addOpportunityProduct,
+  updateOpportunityProduct,
   updateProductStatus,
   removeOpportunityProduct,
   addOpportunityActivity,
   addOpportunityDocument,
   updateOpportunityDocument,
   removeOpportunityDocument,
+  toggleChecklistItem,
   OPPORTUNITY_STAGES,
+  OPPORTUNITY_TYPES,
   STAGE_CHECKLISTS,
 } from "@/lib/api";
 import type {
@@ -22,6 +25,9 @@ import type {
   OpportunityProduct,
   OpportunityActivity,
   OpportunityStage,
+  OpportunityType,
+  StageGateError,
+  ChecklistItem,
   Document,
 } from "@/lib/api";
 
@@ -37,6 +43,7 @@ export default function OpportunityDetailPage() {
   const [opp, setOpp] = useState<Opportunity | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>("activity");
+  const [gateError, setGateError] = useState<{ error: StageGateError; targetStage: string } | null>(null);
 
   const fetchOpp = useCallback(async () => {
     if (!id) return;
@@ -54,9 +61,9 @@ export default function OpportunityDetailPage() {
     fetchOpp();
   }, [fetchOpp]);
 
-  async function handleStageChange(newStage: string) {
+  async function handleStageChange(newStage: string, force?: boolean) {
     if (!opp) return;
-    if (newStage === "closed_lost") {
+    if (newStage === "closed_lost" && !force) {
       const reason = prompt("Why was this deal lost?");
       if (reason === null) return; // cancelled
       try {
@@ -67,20 +74,31 @@ export default function OpportunityDetailPage() {
         );
         setOpp((prev) => (prev ? { ...prev, ...updated } : prev));
         fetchOpp();
-      } catch (err) {
-        console.error("Failed to update stage", err);
+      } catch (err: any) {
+        if (err.gateError) {
+          setGateError({ error: err.gateError, targetStage: newStage });
+        } else {
+          console.error("Failed to update stage", err);
+        }
       }
       return;
     }
     try {
       const updated = await moveOpportunityStage(
         opp.id,
-        newStage as OpportunityStage
+        newStage as OpportunityStage,
+        undefined,
+        force
       );
+      setGateError(null);
       setOpp((prev) => (prev ? { ...prev, ...updated } : prev));
       fetchOpp();
-    } catch (err) {
-      console.error("Failed to update stage", err);
+    } catch (err: any) {
+      if (err.gateError) {
+        setGateError({ error: err.gateError, targetStage: newStage });
+      } else {
+        console.error("Failed to update stage", err);
+      }
     }
   }
 
@@ -137,7 +155,14 @@ export default function OpportunityDetailPage() {
       {/* Header */}
       <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{opp.title}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{opp.title}</h1>
+            {opp.opportunity_type && (
+              <span className="rounded-full bg-indigo-600/20 px-2.5 py-0.5 text-[10px] font-medium text-indigo-300 uppercase tracking-wide flex-shrink-0">
+                {OPPORTUNITY_TYPES.find((t) => t.id === opp.opportunity_type)?.label || opp.opportunity_type.replace(/_/g, " ")}
+              </span>
+            )}
+          </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
             <span>{opp.account_name}</span>
             {opp.location_name && (
@@ -308,9 +333,58 @@ export default function OpportunityDetailPage() {
       {activeTab === "documents" && (
         <DocumentsTab opp={opp} onRefresh={fetchOpp} />
       )}
-      {activeTab === "checklist" && <ChecklistTab opp={opp} />}
+      {activeTab === "checklist" && <ChecklistTab opp={opp} onRefresh={fetchOpp} />}
       {activeTab === "details" && <DetailsTab opp={opp} />}
       {activeTab === "edit" && <EditTab opp={opp} onSaved={fetchOpp} />}
+
+      {/* Stage Gate Modal */}
+      {gateError && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6 shadow-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-xl">&#9888;</span>
+              <h3 className="text-lg font-semibold text-white">Stage Gate Requirements</h3>
+            </div>
+            <p className="text-sm text-slate-400 mb-4">
+              Cannot advance to <span className="font-medium text-white">{stageLabelMap[gateError.targetStage] || gateError.targetStage}</span> until these requirements are met:
+            </p>
+            <div className="space-y-2 mb-6">
+              {gateError.error.missing_requirements.map((req, i) => (
+                <div key={i} className="flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                    req.type === "field" ? "bg-yellow-600/20 text-yellow-300" :
+                    req.type === "checklist" ? "bg-blue-600/20 text-blue-300" :
+                    "bg-purple-600/20 text-purple-300"
+                  }`}>
+                    {req.type === "field" ? "FIELD" : req.type === "checklist" ? "CHECKLIST" : "PRODUCTS"}
+                  </span>
+                  <span className="text-sm text-slate-300">{req.label}</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setGateError(null)}
+                className="rounded-lg border border-slate-600 px-4 py-2 text-sm text-slate-300 hover:bg-slate-800"
+              >
+                Go Complete
+              </button>
+              {gateError.error.can_force && (
+                <button
+                  onClick={() => {
+                    const stage = gateError.targetStage;
+                    setGateError(null);
+                    handleStageChange(stage, true);
+                  }}
+                  className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-500"
+                >
+                  Advance Anyway
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -676,8 +750,13 @@ function ProductsTab({
     sku: "",
     quantity: "",
     unit_price: "",
+    wholesale_price: "",
+    msrp: "",
+    case_pack: "",
   });
   const [saving, setSaving] = useState(false);
+  const [editingRejection, setEditingRejection] = useState<string | null>(null);
+  const [rejectionText, setRejectionText] = useState("");
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -689,9 +768,12 @@ function ProductsTab({
         sku: form.sku || undefined,
         quantity: form.quantity ? Number(form.quantity) : undefined,
         unit_price: form.unit_price ? Number(form.unit_price) : undefined,
+        wholesale_price: form.wholesale_price ? Number(form.wholesale_price) : undefined,
+        msrp: form.msrp ? Number(form.msrp) : undefined,
+        case_pack: form.case_pack ? Number(form.case_pack) : undefined,
       });
       setShowAdd(false);
-      setForm({ product_name: "", sku: "", quantity: "", unit_price: "" });
+      setForm({ product_name: "", sku: "", quantity: "", unit_price: "", wholesale_price: "", msrp: "", case_pack: "" });
       onRefresh();
     } catch (err) {
       console.error("Failed to add product", err);
@@ -702,10 +784,25 @@ function ProductsTab({
 
   async function handleStatusChange(productId: string, status: string) {
     try {
+      if (status === "rejected") {
+        setEditingRejection(productId);
+        setRejectionText("");
+      }
       await updateProductStatus(opp.id, productId, status);
       onRefresh();
     } catch (err) {
       console.error("Failed to update status", err);
+    }
+  }
+
+  async function handleSaveRejection(productId: string) {
+    try {
+      await updateOpportunityProduct(opp.id, productId, { rejection_reason: rejectionText });
+      setEditingRejection(null);
+      setRejectionText("");
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to save rejection reason", err);
     }
   }
 
@@ -727,8 +824,46 @@ function ProductsTab({
     on_shelf: "bg-emerald-600/20 text-emerald-300",
   };
 
+  // Totals
+  const products = opp.products || [];
+  const totalPOValue = products.reduce((sum, p) => sum + (p.total_price || 0), 0);
+  const approvedCount = products.filter((p) => p.status === "approved" || p.status === "on_shelf").length;
+  const rejectedCount = products.filter((p) => p.status === "rejected").length;
+  const avgMargin = (() => {
+    const withMargin = products.filter((p) => p.margin_percent != null);
+    if (withMargin.length === 0) return null;
+    return withMargin.reduce((sum, p) => sum + (p.margin_percent || 0), 0) / withMargin.length;
+  })();
+
   return (
     <div>
+      {/* Summary Row */}
+      {products.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2">
+            <p className="text-[10px] text-slate-400 uppercase">Total PO Value</p>
+            <p className="text-lg font-bold text-emerald-400">${totalPOValue.toLocaleString()}</p>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2">
+            <p className="text-[10px] text-slate-400 uppercase">Products</p>
+            <p className="text-lg font-bold text-white">{products.length}</p>
+            <p className="text-[10px] text-slate-500">{approvedCount} approved, {rejectedCount} rejected</p>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2">
+            <p className="text-[10px] text-slate-400 uppercase">Avg Margin</p>
+            <p className={`text-lg font-bold ${avgMargin != null && avgMargin >= 30 ? "text-emerald-400" : avgMargin != null && avgMargin >= 15 ? "text-yellow-400" : avgMargin != null ? "text-red-400" : "text-slate-500"}`}>
+              {avgMargin != null ? `${avgMargin.toFixed(1)}%` : "\u2014"}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2">
+            <p className="text-[10px] text-slate-400 uppercase">Weighted Value</p>
+            <p className="text-lg font-bold text-indigo-400">
+              ${Math.round(totalPOValue * (opp.probability / 100)).toLocaleString()}
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-end mb-4">
         <button
           onClick={() => setShowAdd(!showAdd)}
@@ -745,15 +880,11 @@ function ProductsTab({
         >
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">
-                Product Name *
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Product Name *</label>
               <input
                 required
                 value={form.product_name}
-                onChange={(e) =>
-                  setForm({ ...form, product_name: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, product_name: e.target.value })}
                 placeholder="BullFit Whey Protein 5lb"
                 className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
               />
@@ -766,30 +897,71 @@ function ProductsTab({
                 className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">Qty</label>
-                <input
-                  type="number"
-                  value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-                  className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-400 mb-1">$/unit</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={form.unit_price}
-                  onChange={(e) =>
-                    setForm({ ...form, unit_price: e.target.value })
-                  }
-                  className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
-                />
-              </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Case Pack</label>
+              <input
+                type="number"
+                value={form.case_pack}
+                onChange={(e) => setForm({ ...form, case_pack: e.target.value })}
+                placeholder="12"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              />
             </div>
           </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Wholesale $</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.wholesale_price}
+                onChange={(e) => setForm({ ...form, wholesale_price: e.target.value })}
+                placeholder="24.99"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">MSRP $</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.msrp}
+                onChange={(e) => setForm({ ...form, msrp: e.target.value })}
+                placeholder="39.99"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Qty</label>
+              <input
+                type="number"
+                value={form.quantity}
+                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Unit Price $</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.unit_price}
+                onChange={(e) => setForm({ ...form, unit_price: e.target.value })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          {form.wholesale_price && form.msrp && (
+            <div className="text-xs text-slate-400">
+              Calculated margin:{" "}
+              <span className={`font-medium ${
+                ((Number(form.msrp) - Number(form.wholesale_price)) / Number(form.msrp)) * 100 >= 30
+                  ? "text-emerald-400" : "text-yellow-400"
+              }`}>
+                {(((Number(form.msrp) - Number(form.wholesale_price)) / Number(form.msrp)) * 100).toFixed(1)}%
+              </span>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <button
               type="button"
@@ -809,7 +981,7 @@ function ProductsTab({
         </form>
       )}
 
-      {(opp.products?.length || 0) === 0 ? (
+      {products.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-8">
           No products pitched yet.
         </p>
@@ -818,53 +990,74 @@ function ProductsTab({
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-700 bg-slate-800/50">
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-400">
-                  Product
-                </th>
-                <th className="px-4 py-2 text-left text-xs font-medium uppercase text-slate-400">
-                  SKU
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-slate-400">
-                  Qty
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-slate-400">
-                  Unit Price
-                </th>
-                <th className="px-4 py-2 text-right text-xs font-medium uppercase text-slate-400">
-                  Total
-                </th>
-                <th className="px-4 py-2 text-center text-xs font-medium uppercase text-slate-400">
-                  Status
-                </th>
-                <th className="px-4 py-2 w-10"></th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-slate-400">Product</th>
+                <th className="px-3 py-2 text-left text-xs font-medium uppercase text-slate-400">SKU</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">Wholesale</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">MSRP</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">Margin</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">Case</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">Qty</th>
+                <th className="px-3 py-2 text-right text-xs font-medium uppercase text-slate-400">Total</th>
+                <th className="px-3 py-2 text-center text-xs font-medium uppercase text-slate-400">Status</th>
+                <th className="px-3 py-2 w-8"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
-              {opp.products?.map((p) => (
-                <tr key={p.id}>
-                  <td className="px-4 py-2 text-sm text-white">
+              {products.map((p) => (
+                <tr key={p.id} className="group">
+                  <td className="px-3 py-2 text-sm text-white">
                     {p.product_name}
+                    {p.status === "rejected" && p.rejection_reason && (
+                      <p className="text-[10px] text-red-400 mt-0.5">{p.rejection_reason}</p>
+                    )}
+                    {p.status === "rejected" && editingRejection === p.id && (
+                      <div className="mt-1 flex gap-1">
+                        <input
+                          value={rejectionText}
+                          onChange={(e) => setRejectionText(e.target.value)}
+                          placeholder="Rejection reason..."
+                          className="flex-1 rounded border border-red-700/50 bg-slate-900 px-2 py-0.5 text-[11px] text-white placeholder-slate-500 focus:border-red-500 focus:outline-none"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleSaveRejection(p.id)}
+                          className="rounded bg-red-600 px-2 py-0.5 text-[10px] text-white hover:bg-red-500"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
                   </td>
-                  <td className="px-4 py-2 text-sm text-slate-400">
-                    {p.sku || "\u2014"}
+                  <td className="px-3 py-2 text-sm text-slate-400">{p.sku || "\u2014"}</td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-300">
+                    {p.wholesale_price ? `$${Number(p.wholesale_price).toFixed(2)}` : "\u2014"}
                   </td>
-                  <td className="px-4 py-2 text-right text-sm text-slate-300">
+                  <td className="px-3 py-2 text-right text-sm text-slate-300">
+                    {p.msrp ? `$${Number(p.msrp).toFixed(2)}` : "\u2014"}
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm">
+                    {p.margin_percent != null ? (
+                      <span className={`font-medium ${
+                        Number(p.margin_percent) >= 30 ? "text-emerald-400" :
+                        Number(p.margin_percent) >= 15 ? "text-yellow-400" : "text-red-400"
+                      }`}>
+                        {Number(p.margin_percent).toFixed(1)}%
+                      </span>
+                    ) : "\u2014"}
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-300">
+                    {p.case_pack || "\u2014"}
+                  </td>
+                  <td className="px-3 py-2 text-right text-sm text-slate-300">
                     {p.quantity || "\u2014"}
                   </td>
-                  <td className="px-4 py-2 text-right text-sm text-slate-300">
-                    {p.unit_price ? `$${p.unit_price}` : "\u2014"}
+                  <td className="px-3 py-2 text-right text-sm font-medium text-white">
+                    {p.total_price ? `$${Number(p.total_price).toLocaleString()}` : "\u2014"}
                   </td>
-                  <td className="px-4 py-2 text-right text-sm font-medium text-white">
-                    {p.total_price
-                      ? `$${p.total_price.toLocaleString()}`
-                      : "\u2014"}
-                  </td>
-                  <td className="px-4 py-2 text-center">
+                  <td className="px-3 py-2 text-center">
                     <select
                       value={p.status}
-                      onChange={(e) =>
-                        handleStatusChange(p.id, e.target.value)
-                      }
+                      onChange={(e) => handleStatusChange(p.id, e.target.value)}
                       className={`rounded px-2 py-0.5 text-xs font-medium border-0 ${
                         statusColors[p.status] || "bg-slate-600/20 text-slate-300"
                       }`}
@@ -876,10 +1069,10 @@ function ProductsTab({
                       <option value="on_shelf">On Shelf</option>
                     </select>
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-3 py-2">
                     <button
                       onClick={() => handleRemoveProduct(p.id)}
-                      className="text-xs text-red-400 hover:text-red-300"
+                      className="text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       &#10005;
                     </button>
@@ -887,6 +1080,17 @@ function ProductsTab({
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr className="border-t border-slate-600 bg-slate-800/80">
+                <td colSpan={7} className="px-3 py-2 text-right text-xs font-medium text-slate-400 uppercase">
+                  Total PO Value
+                </td>
+                <td className="px-3 py-2 text-right text-sm font-bold text-emerald-400">
+                  ${totalPOValue.toLocaleString()}
+                </td>
+                <td colSpan={2}></td>
+              </tr>
+            </tfoot>
           </table>
         </div>
       )}
@@ -1121,29 +1325,31 @@ function DocumentsTab({
 }
 
 // === CHECKLIST TAB ===
-function ChecklistTab({ opp }: { opp: Opportunity }) {
-  // Store checklist state in localStorage keyed by opportunity id
-  const storageKey = `opp_checklist_${opp.id}`;
-  const [checked, setChecked] = useState<Record<string, boolean>>(() => {
-    if (typeof window === "undefined") return {};
-    try {
-      return JSON.parse(localStorage.getItem(storageKey) || "{}");
-    } catch {
-      return {};
-    }
-  });
-
-  function toggleItem(key: string) {
-    setChecked((prev) => {
-      const next = { ...prev, [key]: !prev[key] };
-      localStorage.setItem(storageKey, JSON.stringify(next));
-      return next;
-    });
+function ChecklistTab({ opp, onRefresh }: { opp: Opportunity; onRefresh: () => void }) {
+  // Build lookup from server-side checklist items
+  const serverChecked: Record<string, ChecklistItem> = {};
+  for (const item of opp.checklist || []) {
+    serverChecked[item.item_key] = item;
   }
 
-  const currentChecklist = STAGE_CHECKLISTS.find(
-    (c) => c.stage === opp.stage
-  );
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  async function handleToggle(stage: string, itemKey: string, currentlyChecked: boolean) {
+    const fullKey = `${stage}_${itemKey}`;
+    setToggling(fullKey);
+    try {
+      await toggleChecklistItem(opp.id, {
+        stage,
+        item_key: fullKey,
+        is_completed: !currentlyChecked,
+      });
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to toggle checklist item", err);
+    } finally {
+      setToggling(null);
+    }
+  }
 
   // Show current stage + completed stages checklists
   const currentStageIdx = OPPORTUNITY_STAGES.findIndex(
@@ -1157,10 +1363,11 @@ function ChecklistTab({ opp }: { opp: Opportunity }) {
         return clIdx <= currentStageIdx;
       }).map((cl) => {
         const isCurrent = cl.stage === opp.stage;
-        const allDone = cl.items.every((item) => checked[`${cl.stage}_${item.key}`]);
+        const allDone = cl.items.every((item) => !!serverChecked[`${cl.stage}_${item.key}`]?.is_completed);
         const requiredDone = cl.items
           .filter((i) => i.required)
-          .every((item) => checked[`${cl.stage}_${item.key}`]);
+          .every((item) => !!serverChecked[`${cl.stage}_${item.key}`]?.is_completed);
+        const doneCount = cl.items.filter((i) => !!serverChecked[`${cl.stage}_${i.key}`]?.is_completed).length;
 
         return (
           <div
@@ -1190,37 +1397,47 @@ function ChecklistTab({ opp }: { opp: Opportunity }) {
                 <span className="text-xs text-yellow-400">Required done</span>
               ) : (
                 <span className="text-xs text-slate-500">
-                  {cl.items.filter((i) => checked[`${cl.stage}_${i.key}`]).length}/{cl.items.length}
+                  {doneCount}/{cl.items.length}
                 </span>
               )}
             </div>
             <div className="space-y-2">
               {cl.items.map((item) => {
-                const key = `${cl.stage}_${item.key}`;
-                const isChecked = !!checked[key];
+                const fullKey = `${cl.stage}_${item.key}`;
+                const serverItem = serverChecked[fullKey];
+                const isChecked = !!serverItem?.is_completed;
+                const isToggling = toggling === fullKey;
                 return (
                   <label
                     key={item.key}
-                    className="flex items-start gap-2 cursor-pointer group"
+                    className={`flex items-start gap-2 cursor-pointer group ${isToggling ? "opacity-50" : ""}`}
                   >
                     <input
                       type="checkbox"
                       checked={isChecked}
-                      onChange={() => toggleItem(key)}
+                      disabled={isToggling}
+                      onChange={() => handleToggle(cl.stage, item.key, isChecked)}
                       className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span
-                      className={`text-sm ${
-                        isChecked
-                          ? "text-slate-500 line-through"
-                          : "text-slate-300 group-hover:text-white"
-                      }`}
-                    >
-                      {item.label}
-                      {item.required && !isChecked && (
-                        <span className="ml-1 text-red-400 text-xs">*</span>
+                    <div className="flex-1">
+                      <span
+                        className={`text-sm ${
+                          isChecked
+                            ? "text-slate-500 line-through"
+                            : "text-slate-300 group-hover:text-white"
+                        }`}
+                      >
+                        {item.label}
+                        {item.required && !isChecked && (
+                          <span className="ml-1 text-red-400 text-xs">*</span>
+                        )}
+                      </span>
+                      {isChecked && serverItem?.completed_at && (
+                        <p className="text-[10px] text-slate-600 mt-0.5">
+                          Completed {new Date(serverItem.completed_at).toLocaleDateString()}
+                        </p>
                       )}
-                    </span>
+                    </div>
                   </label>
                 );
               })}
@@ -1236,6 +1453,7 @@ function ChecklistTab({ opp }: { opp: Opportunity }) {
 function DetailsTab({ opp }: { opp: Opportunity }) {
   const details = [
     { label: "Account", value: opp.account_name },
+    { label: "Type", value: opp.opportunity_type ? (OPPORTUNITY_TYPES.find((t) => t.id === opp.opportunity_type)?.label || opp.opportunity_type.replace(/_/g, " ")) : "New Authorization" },
     { label: "Location", value: opp.location_name || "Not assigned" },
     {
       label: "Store Type",
@@ -1316,6 +1534,7 @@ function EditTab({
 }) {
   const [form, setForm] = useState({
     title: opp.title,
+    opportunity_type: opp.opportunity_type || "new_authorization",
     estimated_value: opp.estimated_value || "",
     estimated_monthly_volume: opp.estimated_monthly_volume || "",
     expected_close_date: opp.expected_close_date || "",
@@ -1331,6 +1550,7 @@ function EditTab({
     try {
       await updateOpportunity(opp.id, {
         title: form.title,
+        opportunity_type: form.opportunity_type as any,
         estimated_value: form.estimated_value
           ? Number(form.estimated_value)
           : undefined,
@@ -1352,15 +1572,31 @@ function EditTab({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
-      <div>
-        <label className="block text-sm font-medium text-slate-300 mb-1">
-          Title
-        </label>
-        <input
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
-        />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Title
+          </label>
+          <input
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1">
+            Opportunity Type
+          </label>
+          <select
+            value={form.opportunity_type}
+            onChange={(e) => setForm({ ...form, opportunity_type: e.target.value as OpportunityType })}
+            className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          >
+            {OPPORTUNITY_TYPES.map((t) => (
+              <option key={t.id} value={t.id}>{t.label}</option>
+            ))}
+          </select>
+        </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>

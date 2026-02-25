@@ -12,6 +12,8 @@ import {
   deleteLocation,
   deleteRetailContact,
   OPPORTUNITY_STAGES,
+  OPPORTUNITY_TYPES,
+  LOCATION_TYPES,
 } from "@/lib/api";
 import type {
   Account,
@@ -22,6 +24,8 @@ import type {
   RetailContactInput,
   OpportunityInput,
   OpportunityStage,
+  LocationType,
+  OpportunityType,
 } from "@/lib/api";
 
 type TabId = "overview" | "locations" | "contacts" | "opportunities" | "edit";
@@ -312,6 +316,7 @@ function LocationsTab({
     account_id: account.id,
     name: "",
     store_type: "other",
+    location_type: "door",
   });
   const [saving, setSaving] = useState(false);
 
@@ -322,7 +327,7 @@ function LocationsTab({
     try {
       await createLocation({ ...form, account_id: account.id } as LocationInput);
       setShowAdd(false);
-      setForm({ account_id: account.id, name: "", store_type: "other" });
+      setForm({ account_id: account.id, name: "", store_type: "other", location_type: "door" });
       onRefresh();
     } catch (err) {
       console.error("Failed to create location", err);
@@ -341,6 +346,72 @@ function LocationsTab({
     }
   }
 
+  // Group locations by type
+  const locations = account.locations || [];
+  const doors = locations.filter((l) => !l.location_type || l.location_type === "door");
+  const dcs = locations.filter((l) => l.location_type === "distribution_center");
+  const warehouses = locations.filter((l) => l.location_type === "warehouse");
+  const hqs = locations.filter((l) => l.location_type === "headquarters");
+
+  const typeColors: Record<string, string> = {
+    door: "bg-blue-600/20 text-blue-300",
+    distribution_center: "bg-purple-600/20 text-purple-300",
+    warehouse: "bg-orange-600/20 text-orange-300",
+    headquarters: "bg-emerald-600/20 text-emerald-300",
+  };
+
+  const isDC = form.location_type === "distribution_center" || form.location_type === "warehouse";
+
+  function renderLocationGroup(title: string, locs: Location[], typeBadge: string) {
+    if (locs.length === 0) return null;
+    return (
+      <div key={title} className="mb-4">
+        <h4 className="text-xs font-medium text-slate-400 uppercase mb-2">
+          {title} ({locs.length})
+        </h4>
+        <div className="space-y-2">
+          {locs.map((loc) => (
+            <div
+              key={loc.id}
+              className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 p-4"
+            >
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-white">{loc.name}</p>
+                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${typeColors[loc.location_type || "door"] || typeColors.door}`}>
+                    {LOCATION_TYPES.find((t) => t.id === loc.location_type)?.label || "Retail Door"}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">
+                  {[loc.address, loc.city, loc.state].filter(Boolean).join(", ") || "No address"}
+                  {loc.store_type && loc.store_type !== "other" && (
+                    <> {"\u2022"} <span className="capitalize">{loc.store_type.replace("_", " ")}</span></>
+                  )}
+                  {loc.dc_region && <> {"\u2022"} Region: {loc.dc_region}</>}
+                  {loc.door_count && <> {"\u2022"} {loc.door_count} doors</>}
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                {loc.active_opps != null && loc.active_opps > 0 && (
+                  <span className="text-[10px] text-indigo-400">{loc.active_opps} opp{loc.active_opps !== 1 ? "s" : ""}</span>
+                )}
+                {loc.phone && (
+                  <span className="text-xs text-slate-400">{loc.phone}</span>
+                )}
+                <button
+                  onClick={() => handleDelete(loc.id)}
+                  className="text-xs text-red-400 hover:text-red-300"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex justify-end mb-4">
@@ -357,11 +428,9 @@ function LocationsTab({
           onSubmit={handleAdd}
           className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                Name *
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Name *</label>
               <input
                 required
                 value={form.name || ""}
@@ -371,9 +440,19 @@ function LocationsTab({
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                Store Type
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Location Type</label>
+              <select
+                value={form.location_type || "door"}
+                onChange={(e) => setForm({ ...form, location_type: e.target.value as LocationType })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              >
+                {LOCATION_TYPES.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Store Type</label>
               <select
                 value={form.store_type || "other"}
                 onChange={(e) => setForm({ ...form, store_type: e.target.value })}
@@ -388,11 +467,32 @@ function LocationsTab({
               </select>
             </div>
           </div>
+          {isDC && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">DC Region</label>
+                <input
+                  value={form.dc_region || ""}
+                  onChange={(e) => setForm({ ...form, dc_region: e.target.value })}
+                  placeholder="e.g. Southeast, Northeast"
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Door Count</label>
+                <input
+                  type="number"
+                  value={form.door_count || ""}
+                  onChange={(e) => setForm({ ...form, door_count: e.target.value ? Number(e.target.value) : undefined })}
+                  placeholder="250"
+                  className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                />
+              </div>
+            </div>
+          )}
           <div className="grid grid-cols-4 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">
-                Address
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Address</label>
               <input
                 value={form.address || ""}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
@@ -408,9 +508,7 @@ function LocationsTab({
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                State
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">State</label>
               <input
                 value={form.state || ""}
                 onChange={(e) => setForm({ ...form, state: e.target.value })}
@@ -437,40 +535,16 @@ function LocationsTab({
         </form>
       )}
 
-      {(account.locations?.length || 0) === 0 ? (
+      {locations.length === 0 ? (
         <p className="text-sm text-slate-500 text-center py-8">
-          No locations yet. Add your first store door.
+          No locations yet. Add your first store door or distribution center.
         </p>
       ) : (
-        <div className="space-y-2">
-          {account.locations?.map((loc) => (
-            <div
-              key={loc.id}
-              className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 p-4"
-            >
-              <div>
-                <p className="text-sm font-medium text-white">{loc.name}</p>
-                <p className="text-xs text-slate-400">
-                  {[loc.address, loc.city, loc.state].filter(Boolean).join(", ") || "No address"}
-                  {" \u2022 "}
-                  <span className="capitalize">
-                    {loc.store_type?.replace("_", " ")}
-                  </span>
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                {loc.phone && (
-                  <span className="text-xs text-slate-400">{loc.phone}</span>
-                )}
-                <button
-                  onClick={() => handleDelete(loc.id)}
-                  className="text-xs text-red-400 hover:text-red-300"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
+        <div>
+          {renderLocationGroup("Retail Doors", doors, "door")}
+          {renderLocationGroup("Distribution Centers", dcs, "distribution_center")}
+          {renderLocationGroup("Warehouses", warehouses, "warehouse")}
+          {renderLocationGroup("Headquarters", hqs, "headquarters")}
         </div>
       )}
     </div>
@@ -745,6 +819,7 @@ function OpportunitiesTab({
     account_id: account.id,
     title: "",
     stage: "targeted",
+    opportunity_type: "new_authorization",
   });
   const [saving, setSaving] = useState(false);
 
@@ -760,7 +835,7 @@ function OpportunitiesTab({
           `${account.name} - New Opportunity`,
       } as OpportunityInput);
       setShowAdd(false);
-      setForm({ account_id: account.id, title: "", stage: "targeted" });
+      setForm({ account_id: account.id, title: "", stage: "targeted", opportunity_type: "new_authorization" });
       onRefresh();
     } catch (err) {
       console.error("Failed to create opportunity", err);
@@ -785,11 +860,9 @@ function OpportunitiesTab({
           onSubmit={handleAdd}
           className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                Title
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Title</label>
               <input
                 value={form.title || ""}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
@@ -798,9 +871,21 @@ function OpportunitiesTab({
               />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">
-                Stage
-              </label>
+              <label className="block text-xs text-slate-400 mb-1">Type</label>
+              <select
+                value={form.opportunity_type || "new_authorization"}
+                onChange={(e) =>
+                  setForm({ ...form, opportunity_type: e.target.value as OpportunityType })
+                }
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              >
+                {OPPORTUNITY_TYPES.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Stage</label>
               <select
                 value={form.stage || "targeted"}
                 onChange={(e) =>
@@ -895,7 +980,14 @@ function OpportunitiesTab({
               className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/50 p-4 hover:border-slate-600 transition-colors"
             >
               <div>
-                <p className="text-sm font-medium text-white">{o.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium text-white">{o.title}</p>
+                  {o.opportunity_type && o.opportunity_type !== "new_authorization" && (
+                    <span className="rounded-full bg-indigo-600/20 px-1.5 py-0.5 text-[9px] font-medium text-indigo-300">
+                      {OPPORTUNITY_TYPES.find((t) => t.id === o.opportunity_type)?.label || o.opportunity_type.replace(/_/g, " ")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-slate-400">
                   {o.location_name && `${o.location_name} \u2022 `}
                   {o.contact_first_name &&

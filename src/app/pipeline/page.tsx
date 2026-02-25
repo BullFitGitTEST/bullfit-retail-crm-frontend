@@ -7,13 +7,14 @@ import {
   moveOpportunityStage,
   OPPORTUNITY_STAGES,
 } from "@/lib/api";
-import type { Opportunity, OpportunityPipelineView, OpportunityStage } from "@/lib/api";
+import type { Opportunity, OpportunityPipelineView, OpportunityStage, StageGateError } from "@/lib/api";
 
 export default function PipelinePage() {
   const [pipeline, setPipeline] = useState<OpportunityPipelineView>({});
   const [loading, setLoading] = useState(true);
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+  const [gateToast, setGateToast] = useState<{ oppTitle: string; missing: StageGateError["missing_requirements"] } | null>(null);
 
   const fetchPipeline = useCallback(async () => {
     try {
@@ -85,8 +86,17 @@ export default function PipelinePage() {
 
     try {
       await moveOpportunityStage(opp.id, newStage as OpportunityStage);
-    } catch (err) {
-      console.error("Failed to move opportunity", err);
+    } catch (err: any) {
+      if (err.gateError) {
+        setGateToast({
+          oppTitle: opp.title,
+          missing: err.gateError.missing_requirements,
+        });
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => setGateToast(null), 5000);
+      } else {
+        console.error("Failed to move opportunity", err);
+      }
       fetchPipeline(); // revert
     }
   }
@@ -138,6 +148,31 @@ export default function PipelinePage() {
           + New from Account
         </Link>
       </div>
+
+      {/* Stage Gate Toast */}
+      {gateToast && (
+        <div className="mb-4 rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-3 flex items-start gap-3">
+          <span className="text-amber-400 text-lg flex-shrink-0">&#9888;</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-amber-300">
+              Cannot advance &quot;{gateToast.oppTitle}&quot;
+            </p>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {gateToast.missing.map((req, i) => (
+                <span key={i} className="rounded bg-amber-800/30 px-2 py-0.5 text-[10px] text-amber-200">
+                  {req.label}
+                </span>
+              ))}
+            </div>
+          </div>
+          <button
+            onClick={() => setGateToast(null)}
+            className="text-amber-400 hover:text-amber-300 text-sm flex-shrink-0"
+          >
+            &#10005;
+          </button>
+        </div>
+      )}
 
       {/* 12-Stage Kanban — horizontal scroll */}
       <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
