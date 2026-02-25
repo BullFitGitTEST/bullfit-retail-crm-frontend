@@ -6,6 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { getProspects, createProspect, deleteProspect } from "@/lib/api";
 import type { Prospect, ProspectInput } from "@/lib/api";
 import StageBadge from "@/components/shared/StageBadge";
+import ApolloSearch from "@/components/ApolloSearch";
 
 export default function ProspectsPage() {
   return (
@@ -22,6 +23,7 @@ function ProspectsContent() {
   const [search, setSearch] = useState("");
   const [stageFilter, setStageFilter] = useState(searchParams.get("stage") || "");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showApolloSearch, setShowApolloSearch] = useState(false);
 
   const fetchProspects = useCallback(async () => {
     try {
@@ -59,12 +61,20 @@ function ProspectsContent() {
           <h1 className="text-2xl font-bold text-white">Prospects</h1>
           <p className="mt-1 text-sm text-slate-400">{prospects.length} total prospects</p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-        >
-          + Add Prospect
-        </button>
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowApolloSearch(true)}
+            className="rounded-lg border border-indigo-500/30 bg-slate-800 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-600/10 transition"
+          >
+            Find with Apollo
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          >
+            + Add Prospect
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -164,6 +174,16 @@ function ProspectsContent() {
           onAdded={(p) => {
             setProspects((prev) => [p, ...prev]);
             setShowAddModal(false);
+          }}
+        />
+      )}
+
+      {/* Apollo Search Modal */}
+      {showApolloSearch && (
+        <ApolloSearch
+          onClose={() => setShowApolloSearch(false)}
+          onImported={(newProspects) => {
+            setProspects((prev) => [...newProspects, ...prev]);
           }}
         />
       )}
