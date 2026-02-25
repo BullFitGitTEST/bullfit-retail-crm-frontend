@@ -184,6 +184,242 @@ export interface DashboardStats {
 }
 
 // ---------------------------------------------------------------------------
+// Retail Account Model Types
+// ---------------------------------------------------------------------------
+
+export type OpportunityStage =
+  | "targeted"
+  | "contact_found"
+  | "first_touch"
+  | "meeting_booked"
+  | "pitch_delivered"
+  | "samples_sent"
+  | "follow_up"
+  | "vendor_setup"
+  | "authorization_pending"
+  | "po_received"
+  | "on_shelf"
+  | "reorder_cycle"
+  | "closed_lost"
+  | "on_hold";
+
+export const OPPORTUNITY_STAGES: {
+  id: OpportunityStage;
+  label: string;
+  probability: number;
+  color: string;
+}[] = [
+  { id: "targeted", label: "Targeted", probability: 0, color: "border-slate-500" },
+  { id: "contact_found", label: "Contact Found", probability: 5, color: "border-blue-500" },
+  { id: "first_touch", label: "First Touch", probability: 10, color: "border-cyan-500" },
+  { id: "meeting_booked", label: "Meeting Booked", probability: 20, color: "border-teal-500" },
+  { id: "pitch_delivered", label: "Pitch Delivered", probability: 30, color: "border-yellow-500" },
+  { id: "samples_sent", label: "Samples Sent", probability: 40, color: "border-orange-500" },
+  { id: "follow_up", label: "Follow Up", probability: 50, color: "border-amber-500" },
+  { id: "vendor_setup", label: "Vendor Setup", probability: 60, color: "border-purple-500" },
+  { id: "authorization_pending", label: "Auth Pending", probability: 70, color: "border-violet-500" },
+  { id: "po_received", label: "PO Received", probability: 85, color: "border-indigo-500" },
+  { id: "on_shelf", label: "On Shelf", probability: 95, color: "border-emerald-500" },
+  { id: "reorder_cycle", label: "Reorder", probability: 100, color: "border-green-500" },
+];
+
+export interface Account {
+  id: string;
+  name: string;
+  website?: string;
+  industry?: string;
+  annual_revenue?: number;
+  employee_count?: number;
+  notes?: string;
+  owner_id?: string;
+  owner_name?: string;
+  location_count?: number;
+  contact_count?: number;
+  active_opportunities?: number;
+  created_at: string;
+  updated_at: string;
+  // Populated on detail fetch
+  locations?: Location[];
+  contacts?: RetailContact[];
+  opportunities?: Opportunity[];
+}
+
+export interface AccountInput {
+  name: string;
+  website?: string;
+  industry?: string;
+  annual_revenue?: number;
+  employee_count?: number;
+  notes?: string;
+  owner_id?: string;
+}
+
+export interface Location {
+  id: string;
+  account_id: string;
+  account_name?: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  store_type: string;
+  square_footage?: number;
+  foot_traffic_estimate?: number;
+  is_active: boolean;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationInput {
+  account_id: string;
+  name: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+  phone?: string;
+  store_type?: string;
+  square_footage?: number;
+  foot_traffic_estimate?: number;
+  notes?: string;
+}
+
+export interface RetailContact {
+  id: string;
+  account_id: string;
+  account_name?: string;
+  location_id?: string;
+  location_name?: string;
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  role: string;
+  title?: string;
+  is_primary: boolean;
+  is_decision_maker: boolean;
+  notes?: string;
+  source: string;
+  apollo_id?: string;
+  last_contacted_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RetailContactInput {
+  account_id: string;
+  location_id?: string;
+  first_name: string;
+  last_name?: string;
+  email?: string;
+  phone?: string;
+  role?: string;
+  title?: string;
+  is_primary?: boolean;
+  is_decision_maker?: boolean;
+  notes?: string;
+  source?: string;
+  apollo_id?: string;
+}
+
+export interface Opportunity {
+  id: string;
+  account_id: string;
+  account_name?: string;
+  location_id?: string;
+  location_name?: string;
+  location_city?: string;
+  location_state?: string;
+  store_type?: string;
+  contact_id?: string;
+  contact_first_name?: string;
+  contact_last_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  owner_id?: string;
+  owner_name?: string;
+  title: string;
+  stage: OpportunityStage;
+  estimated_value?: number;
+  estimated_monthly_volume?: number;
+  expected_close_date?: string;
+  actual_close_date?: string;
+  probability: number;
+  lost_reason?: string;
+  next_step_date?: string;
+  next_step_description?: string;
+  notes?: string;
+  source: string;
+  product_count?: number;
+  created_at: string;
+  updated_at: string;
+  // Populated on detail fetch
+  products?: OpportunityProduct[];
+  activities?: OpportunityActivity[];
+  documents?: Document[];
+}
+
+export interface OpportunityInput {
+  account_id: string;
+  location_id?: string;
+  contact_id?: string;
+  owner_id?: string;
+  title?: string;
+  stage?: OpportunityStage;
+  estimated_value?: number;
+  estimated_monthly_volume?: number;
+  expected_close_date?: string;
+  next_step_date?: string;
+  next_step_description?: string;
+  notes?: string;
+  source?: string;
+}
+
+export interface OpportunityProduct {
+  id: string;
+  opportunity_id: string;
+  product_name: string;
+  sku?: string;
+  quantity?: number;
+  unit_price?: number;
+  total_price?: number;
+  status: string;
+  notes?: string;
+  created_at: string;
+}
+
+export interface OpportunityActivity {
+  id: string;
+  opportunity_id: string;
+  account_id?: string;
+  team_member_id?: string;
+  type: string;
+  title: string;
+  description?: string;
+  metadata: Record<string, any>;
+  created_at: string;
+}
+
+export interface Document {
+  id: string;
+  account_id?: string;
+  opportunity_id?: string;
+  name: string;
+  type: string;
+  url?: string;
+  status: string;
+  notes?: string;
+  uploaded_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OpportunityPipelineView = Record<string, Opportunity[]>;
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -474,6 +710,239 @@ export async function endCall(id: string): Promise<Call> {
   return request<Call>(`/api/calls/${id}/end`, {
     method: "POST",
   });
+}
+
+// ---------------------------------------------------------------------------
+// Accounts
+// ---------------------------------------------------------------------------
+
+export async function getAccounts(params?: {
+  search?: string;
+  owner_id?: string;
+}): Promise<Account[]> {
+  const query = new URLSearchParams();
+  if (params?.search) query.set("search", params.search);
+  if (params?.owner_id) query.set("owner_id", params.owner_id);
+  const qs = query.toString();
+  return request<Account[]>(`/api/accounts${qs ? `?${qs}` : ""}`);
+}
+
+export async function getAccount(id: string): Promise<Account> {
+  return request<Account>(`/api/accounts/${id}`);
+}
+
+export async function createAccount(data: AccountInput): Promise<Account> {
+  return request<Account>("/api/accounts", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateAccount(
+  id: string,
+  data: Partial<AccountInput>
+): Promise<Account> {
+  return request<Account>(`/api/accounts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAccount(id: string): Promise<void> {
+  await request<void>(`/api/accounts/${id}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Locations
+// ---------------------------------------------------------------------------
+
+export async function getLocations(params?: {
+  account_id?: string;
+  search?: string;
+}): Promise<Location[]> {
+  const query = new URLSearchParams();
+  if (params?.account_id) query.set("account_id", params.account_id);
+  if (params?.search) query.set("search", params.search);
+  const qs = query.toString();
+  return request<Location[]>(`/api/locations${qs ? `?${qs}` : ""}`);
+}
+
+export async function createLocation(data: LocationInput): Promise<Location> {
+  return request<Location>("/api/locations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateLocation(
+  id: string,
+  data: Partial<LocationInput>
+): Promise<Location> {
+  return request<Location>(`/api/locations/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteLocation(id: string): Promise<void> {
+  await request<void>(`/api/locations/${id}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Retail Contacts
+// ---------------------------------------------------------------------------
+
+export async function getRetailContacts(params?: {
+  account_id?: string;
+  location_id?: string;
+  search?: string;
+  role?: string;
+}): Promise<RetailContact[]> {
+  const query = new URLSearchParams();
+  if (params?.account_id) query.set("account_id", params.account_id);
+  if (params?.location_id) query.set("location_id", params.location_id);
+  if (params?.search) query.set("search", params.search);
+  if (params?.role) query.set("role", params.role);
+  const qs = query.toString();
+  return request<RetailContact[]>(`/api/contacts-retail${qs ? `?${qs}` : ""}`);
+}
+
+export async function createRetailContact(
+  data: RetailContactInput
+): Promise<RetailContact> {
+  return request<RetailContact>("/api/contacts-retail", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateRetailContact(
+  id: string,
+  data: Partial<RetailContactInput>
+): Promise<RetailContact> {
+  return request<RetailContact>(`/api/contacts-retail/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteRetailContact(id: string): Promise<void> {
+  await request<void>(`/api/contacts-retail/${id}`, { method: "DELETE" });
+}
+
+// ---------------------------------------------------------------------------
+// Opportunities
+// ---------------------------------------------------------------------------
+
+export async function getOpportunities(params?: {
+  account_id?: string;
+  stage?: string;
+  owner_id?: string;
+  search?: string;
+}): Promise<Opportunity[]> {
+  const query = new URLSearchParams();
+  if (params?.account_id) query.set("account_id", params.account_id);
+  if (params?.stage) query.set("stage", params.stage);
+  if (params?.owner_id) query.set("owner_id", params.owner_id);
+  if (params?.search) query.set("search", params.search);
+  const qs = query.toString();
+  return request<Opportunity[]>(`/api/opportunities${qs ? `?${qs}` : ""}`);
+}
+
+export async function getOpportunityPipeline(): Promise<OpportunityPipelineView> {
+  return request<OpportunityPipelineView>("/api/opportunities/pipeline");
+}
+
+export async function getOpportunity(id: string): Promise<Opportunity> {
+  return request<Opportunity>(`/api/opportunities/${id}`);
+}
+
+export async function createOpportunity(
+  data: OpportunityInput
+): Promise<Opportunity> {
+  return request<Opportunity>("/api/opportunities", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateOpportunity(
+  id: string,
+  data: Partial<OpportunityInput>
+): Promise<Opportunity> {
+  return request<Opportunity>(`/api/opportunities/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function moveOpportunityStage(
+  id: string,
+  stage: OpportunityStage,
+  lost_reason?: string
+): Promise<Opportunity> {
+  return request<Opportunity>(`/api/opportunities/${id}/stage`, {
+    method: "PATCH",
+    body: JSON.stringify({ stage, lost_reason }),
+  });
+}
+
+export async function deleteOpportunity(id: string): Promise<void> {
+  await request<void>(`/api/opportunities/${id}`, { method: "DELETE" });
+}
+
+// Opportunity Products
+export async function addOpportunityProduct(
+  opportunityId: string,
+  data: {
+    product_name: string;
+    sku?: string;
+    quantity?: number;
+    unit_price?: number;
+    notes?: string;
+  }
+): Promise<OpportunityProduct> {
+  return request<OpportunityProduct>(
+    `/api/opportunities/${opportunityId}/products`,
+    { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+export async function updateProductStatus(
+  opportunityId: string,
+  productId: string,
+  status: string
+): Promise<OpportunityProduct> {
+  return request<OpportunityProduct>(
+    `/api/opportunities/${opportunityId}/products/${productId}/status`,
+    { method: "PATCH", body: JSON.stringify({ status }) }
+  );
+}
+
+export async function removeOpportunityProduct(
+  opportunityId: string,
+  productId: string
+): Promise<void> {
+  await request<void>(
+    `/api/opportunities/${opportunityId}/products/${productId}`,
+    { method: "DELETE" }
+  );
+}
+
+// Opportunity Activities
+export async function addOpportunityActivity(
+  opportunityId: string,
+  data: {
+    type: string;
+    title: string;
+    description?: string;
+    metadata?: Record<string, any>;
+  }
+): Promise<OpportunityActivity> {
+  return request<OpportunityActivity>(
+    `/api/opportunities/${opportunityId}/activities`,
+    { method: "POST", body: JSON.stringify(data) }
+  );
 }
 
 // ---------------------------------------------------------------------------
