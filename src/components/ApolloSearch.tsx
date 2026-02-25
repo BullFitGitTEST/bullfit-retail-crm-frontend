@@ -7,12 +7,17 @@ import type { Prospect } from "@/lib/api";
 interface ApolloPerson {
   id: string;
   first_name: string;
-  last_name: string;
+  last_name?: string;
+  last_name_obfuscated?: string;
   title: string;
-  email: string;
-  city: string;
-  state: string;
+  email?: string;
+  city?: string;
+  state?: string;
   linkedin_url?: string;
+  has_email?: boolean;
+  has_city?: boolean;
+  has_state?: boolean;
+  has_direct_phone?: string;
   phone_numbers?: { sanitized_number: string }[];
   organization?: {
     id: string;
@@ -24,7 +29,12 @@ interface ApolloPerson {
     state?: string;
     street_address?: string;
     postal_code?: string;
+    has_industry?: boolean;
+    has_city?: boolean;
+    has_state?: boolean;
   };
+  // Flags for revealed data
+  _revealed?: boolean;
 }
 
 interface ApolloSearchProps {
@@ -126,6 +136,22 @@ export default function ApolloSearch({ onClose, onImported }: ApolloSearchProps)
     }
   }
 
+  async function revealPerson(apolloId: string): Promise<ApolloPerson | null> {
+    try {
+      const res = await fetch("/api/apollo/reveal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apolloId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      return data.person ? { ...data.person, _revealed: true } : null;
+    } catch (err) {
+      console.error("Reveal error:", err);
+      return null;
+    }
+  }
+
   async function handleImport() {
     if (selected.length === 0) return;
     setImporting(true);
@@ -136,23 +162,27 @@ export default function ApolloSearch({ onClose, onImported }: ApolloSearchProps)
 
     for (const person of selected) {
       try {
+        // Reveal full contact data first (costs 1 Apollo credit per person)
+        const revealed = await revealPerson(person.id);
+        const p = revealed || person;
+
         const prospect = await createProspect({
-          business_name: person.organization?.name || `${person.first_name} ${person.last_name}`,
-          contact_first_name: person.first_name,
-          contact_last_name: person.last_name,
-          email: person.email || undefined,
-          phone: person.phone_numbers?.[0]?.sanitized_number || undefined,
-          website: person.organization?.website_url || undefined,
-          city: person.organization?.city || person.city || undefined,
-          state: person.organization?.state || person.state || undefined,
-          store_type: storeTypeFromIndustry(person.organization?.industry),
+          business_name: p.organization?.name || `${p.first_name} ${p.last_name || ""}`.trim(),
+          contact_first_name: p.first_name,
+          contact_last_name: p.last_name || undefined,
+          email: p.email || undefined,
+          phone: p.phone_numbers?.[0]?.sanitized_number || undefined,
+          website: p.organization?.website_url || undefined,
+          city: p.organization?.city || p.city || undefined,
+          state: p.organization?.state || p.state || undefined,
+          store_type: storeTypeFromIndustry(p.organization?.industry),
           source: "apollo",
-          notes: `Imported from Apollo.io | Title: ${person.title || "N/A"} | Industry: ${person.organization?.industry || "N/A"} | Employees: ${person.organization?.estimated_num_employees || "N/A"}${person.linkedin_url ? ` | LinkedIn: ${person.linkedin_url}` : ""}`,
+          notes: `Imported from Apollo.io | Title: ${p.title || "N/A"} | Industry: ${p.organization?.industry || "N/A"} | Employees: ${p.organization?.estimated_num_employees || "N/A"}${p.linkedin_url ? ` | LinkedIn: ${p.linkedin_url}` : ""}`,
         });
         newProspects.push(prospect);
         imported++;
       } catch (err) {
-        console.error("Import error for", person.first_name, person.last_name, err);
+        console.error("Import error for", person.first_name, err);
         errors++;
       }
     }
@@ -345,7 +375,7 @@ export default function ApolloSearch({ onClose, onImported }: ApolloSearchProps)
                     disabled={importing}
                     className="rounded-lg bg-indigo-600 px-5 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition"
                   >
-                    {importing ? "Importing..." : `Import ${selected.length} to CRM`}
+                    {importing ? "Revealing & Importing..." : `Reveal & Import ${selected.length}`}
                   </button>
                 )}
               </div>
@@ -391,11 +421,13 @@ export default function ApolloSearch({ onClose, onImported }: ApolloSearchProps)
                         </td>
                         <td className="px-4 py-3">
                           <div className="text-sm font-medium text-white">
-                            {person.first_name} {person.last_name}
+                            {person.first_name} {person.last_name || person.last_name_obfuscated || ""}
                           </div>
-                          {person.email && (
+                          {person.email ? (
                             <div className="text-xs text-slate-500 mt-0.5">{person.email}</div>
-                          )}
+                          ) : person.has_email ? (
+                            <div className="text-xs text-amber-500/70 mt-0.5">Email available (revealed on import)</div>
+                          ) : null}
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-400">{person.title || "\u2014"}</td>
                         <td className="px-4 py-3">
