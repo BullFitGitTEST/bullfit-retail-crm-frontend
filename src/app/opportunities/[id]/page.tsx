@@ -120,7 +120,7 @@ export default function OpportunityDetailPage() {
 
       {/* Overdue Banner */}
       {isOverdue && opp.stage !== "closed_lost" && opp.stage !== "on_shelf" && opp.stage !== "reorder_cycle" && (
-        <div className="mb-4 rounded-lg border border-red-700/50 bg-red-900/20 px-4 py-3 flex items-center gap-3">
+        <div className="mb-4 rounded-lg border border-red-700/50 bg-red-900/20 px-3 sm:px-4 py-3 flex items-start sm:items-center gap-3">
           <span className="text-red-400 text-lg">&#9888;</span>
           <div>
             <p className="text-sm font-medium text-red-300">
@@ -135,20 +135,20 @@ export default function OpportunityDetailPage() {
       )}
 
       {/* Header */}
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{opp.title}</h1>
-          <div className="mt-1 flex items-center gap-3 text-sm text-slate-400">
+      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-white truncate">{opp.title}</h1>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-400">
             <span>{opp.account_name}</span>
             {opp.location_name && (
               <>
-                <span className="text-slate-600">{"\u2022"}</span>
+                <span className="text-slate-600 hidden sm:inline">{"\u2022"}</span>
                 <span>{opp.location_name}</span>
               </>
             )}
             {opp.contact_first_name && (
               <>
-                <span className="text-slate-600">{"\u2022"}</span>
+                <span className="text-slate-600 hidden sm:inline">{"\u2022"}</span>
                 <span>
                   {opp.contact_first_name} {opp.contact_last_name}
                 </span>
@@ -159,7 +159,7 @@ export default function OpportunityDetailPage() {
         <select
           value={opp.stage}
           onChange={(e) => handleStageChange(e.target.value)}
-          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+          className="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none self-start flex-shrink-0"
         >
           {OPPORTUNITY_STAGES.map((s) => (
             <option key={s.id} value={s.id}>
@@ -172,8 +172,8 @@ export default function OpportunityDetailPage() {
       </div>
 
       {/* Stage Progress Bar */}
-      <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
-        <div className="flex items-center gap-1 overflow-x-auto pb-1">
+      <div className="mb-4 sm:mb-6 rounded-xl border border-slate-700 bg-slate-800 p-3 sm:p-4">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 -mx-1 px-1">
           {OPPORTUNITY_STAGES.map((s, i) => {
             const currentIdx = OPPORTUNITY_STAGES.findIndex(
               (st) => st.id === opp.stage
@@ -200,7 +200,7 @@ export default function OpportunityDetailPage() {
       </div>
 
       {/* Info Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
           <p className="text-xs text-slate-400 uppercase mb-1">Stage</p>
           <p className="text-sm font-medium text-white">
@@ -472,7 +472,7 @@ function ActivityTab({
       {/* Call form */}
       {activityType === "call" && (
         <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Direction</label>
               <select
@@ -566,7 +566,7 @@ function ActivityTab({
       {/* Meeting form */}
       {activityType === "meeting" && (
         <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">Meeting Subject</label>
               <input
@@ -743,7 +743,7 @@ function ProductsTab({
           onSubmit={handleAdd}
           className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3"
         >
-          <div className="grid grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">
                 Product Name *
@@ -989,7 +989,7 @@ function DocumentsTab({
           onSubmit={handleAdd}
           className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3"
         >
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-slate-400 mb-1">
                 Document Name *
@@ -1362,7 +1362,7 @@ function EditTab({
           className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1">
             Estimated Value ($)
@@ -1390,7 +1390,7 @@ function EditTab({
           />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-slate-300 mb-1">
             Expected Close Date

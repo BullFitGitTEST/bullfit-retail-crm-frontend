@@ -39,7 +39,7 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Accounts</h1>
           <p className="mt-1 text-sm text-slate-400">
@@ -48,7 +48,7 @@ export default function AccountsPage() {
         </div>
         <button
           onClick={() => setShowAddModal(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 self-start sm:self-auto"
         >
           + New Account
         </button>
@@ -61,11 +61,11 @@ export default function AccountsPage() {
           placeholder="Search accounts..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-md rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+          className="w-full sm:max-w-md rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
         />
       </div>
 
-      {/* Table */}
+      {/* Content */}
       {loading ? (
         <div className="text-center text-slate-400 py-12">Loading...</div>
       ) : accounts.length === 0 ? (
@@ -79,86 +79,148 @@ export default function AccountsPage() {
           </button>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-700">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-700 bg-slate-800/50">
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
-                  Account
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
-                  Industry
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
-                  Locations
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
-                  Contacts
-                </th>
-                <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
-                  Opportunities
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
-                  Owner
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-400">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/50">
-              {accounts.map((a) => (
-                <tr
-                  key={a.id}
-                  className="hover:bg-slate-800/50 transition-colors"
-                >
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/accounts/${a.id}`}
-                      className="text-sm font-medium text-white hover:text-indigo-400"
-                    >
+        <>
+          {/* Desktop Table — hidden on mobile */}
+          <div className="hidden md:block overflow-x-auto rounded-xl border border-slate-700">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700 bg-slate-800/50">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                    Account
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                    Industry
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
+                    Locations
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
+                    Contacts
+                  </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium uppercase text-slate-400">
+                    Opportunities
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase text-slate-400">
+                    Owner
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase text-slate-400">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {accounts.map((a) => (
+                  <tr
+                    key={a.id}
+                    className="hover:bg-slate-800/50 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/accounts/${a.id}`}
+                        className="text-sm font-medium text-white hover:text-indigo-400"
+                      >
+                        {a.name}
+                      </Link>
+                      {a.website && (
+                        <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                          {a.website}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400 capitalize">
+                      {a.industry || "\u2014"}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-700 px-2 text-xs font-medium text-slate-300">
+                        {a.location_count || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-700 px-2 text-xs font-medium text-slate-300">
+                        {a.contact_count || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-600/20 px-2 text-xs font-medium text-indigo-300">
+                        {a.active_opportunities || 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-400">
+                      {a.owner_name || "\u2014"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={() => handleDelete(a.id)}
+                        className="text-xs text-red-400 hover:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card Layout */}
+          <div className="md:hidden space-y-3">
+            {accounts.map((a) => (
+              <Link
+                key={a.id}
+                href={`/accounts/${a.id}`}
+                className="block rounded-xl border border-slate-700 bg-slate-800 p-4 hover:bg-slate-700/50 transition-colors"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-white truncate">
                       {a.name}
-                    </Link>
-                    {a.website && (
-                      <p className="text-xs text-slate-500 truncate max-w-[200px]">
-                        {a.website}
+                    </p>
+                    {a.industry && (
+                      <p className="text-xs text-slate-400 capitalize mt-0.5">
+                        {a.industry}
                       </p>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-400 capitalize">
-                    {a.industry || "\u2014"}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-700 px-2 text-xs font-medium text-slate-300">
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleDelete(a.id);
+                    }}
+                    className="text-xs text-red-400 hover:text-red-300 ml-2 p-1"
+                  >
+                    Delete
+                  </button>
+                </div>
+                <div className="mt-3 flex items-center gap-3 text-xs">
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700 px-1.5 text-[10px] font-medium text-slate-300">
                       {a.location_count || 0}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-slate-700 px-2 text-xs font-medium text-slate-300">
+                    <span className="text-slate-500">locations</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-700 px-1.5 text-[10px] font-medium text-slate-300">
                       {a.contact_count || 0}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-indigo-600/20 px-2 text-xs font-medium text-indigo-300">
+                    <span className="text-slate-500">contacts</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600/20 px-1.5 text-[10px] font-medium text-indigo-300">
                       {a.active_opportunities || 0}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-slate-400">
-                    {a.owner_name || "\u2014"}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      onClick={() => handleDelete(a.id)}
-                      className="text-xs text-red-400 hover:text-red-300"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    <span className="text-slate-500">opps</span>
+                  </div>
+                </div>
+                {a.owner_name && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    Owner: {a.owner_name}
+                  </p>
+                )}
+              </Link>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Add Modal */}
@@ -204,8 +266,8 @@ function AddAccountModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-xl border border-slate-700 bg-slate-800 p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div className="w-full sm:max-w-lg rounded-t-xl sm:rounded-xl border border-slate-700 bg-slate-800 p-5 sm:p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-lg font-semibold text-white mb-4">
           New Account
         </h2>
@@ -223,7 +285,7 @@ function AddAccountModal({
               className="w-full rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-1">
                 Website

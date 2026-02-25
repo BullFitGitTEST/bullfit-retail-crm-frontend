@@ -61,7 +61,7 @@ export default function ReportingPage() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
           <p className="text-xs text-slate-400 uppercase">Win Rate</p>
           <p className="mt-1 text-2xl font-bold text-emerald-400">
@@ -112,11 +112,11 @@ export default function ReportingPage() {
               const isLost = stage.stage === "closed_lost";
 
               return (
-                <div key={stage.stage} className="flex items-center gap-3">
-                  <span className="text-xs text-slate-400 w-28 text-right truncate">
+                <div key={stage.stage} className="flex items-center gap-2 sm:gap-3">
+                  <span className="text-[10px] sm:text-xs text-slate-400 w-20 sm:w-28 text-right truncate flex-shrink-0">
                     {stageLabelMap[stage.stage] || stage.stage}
                   </span>
-                  <div className="flex-1 h-6 bg-slate-700/30 rounded overflow-hidden">
+                  <div className="flex-1 h-6 bg-slate-700/30 rounded overflow-hidden min-w-0">
                     <div
                       className={`h-full rounded flex items-center px-2 transition-all ${
                         isWon
@@ -133,7 +133,7 @@ export default function ReportingPage() {
                       </span>
                     </div>
                   </div>
-                  <span className="text-xs text-slate-500 w-24 text-right">
+                  <span className="text-[10px] sm:text-xs text-slate-500 w-16 sm:w-24 text-right flex-shrink-0">
                     ${Math.round(stage.total_value).toLocaleString()}
                   </span>
                 </div>
