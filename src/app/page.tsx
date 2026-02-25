@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getDashboardStats, OPPORTUNITY_STAGES } from "@/lib/api";
-import type { EnhancedDashboardStats } from "@/lib/api";
+import { getDashboardStats, getDashboardActions, OPPORTUNITY_STAGES } from "@/lib/api";
+import type { EnhancedDashboardStats, ActionItem } from "@/lib/api";
 
 const stageLabelMap: Record<string, string> = {};
 for (const s of OPPORTUNITY_STAGES) {
@@ -12,14 +12,20 @@ for (const s of OPPORTUNITY_STAGES) {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<EnhancedDashboardStats | null>(null);
+  const [actions, setActions] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllActions, setShowAllActions] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const data = await getDashboardStats();
-        setStats(data);
+        const [statsData, actionsData] = await Promise.all([
+          getDashboardStats(),
+          getDashboardActions(),
+        ]);
+        setStats(statsData);
+        setActions(actionsData);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data");
       } finally {
@@ -56,6 +62,15 @@ export default function DashboardPage() {
     (priorities?.overdue_next_steps?.length || 0) +
     (priorities?.stalled_deals?.length || 0);
 
+  // Action type styling
+  const actionStyles: Record<string, { border: string; badge: string; badgeText: string }> = {
+    overdue: { border: "border-l-red-500", badge: "bg-red-600/20 text-red-300", badgeText: "OVERDUE" },
+    today: { border: "border-l-indigo-500", badge: "bg-indigo-600/20 text-indigo-300", badgeText: "TODAY" },
+    set_next_step: { border: "border-l-yellow-500", badge: "bg-yellow-600/20 text-yellow-300", badgeText: "SET NEXT STEP" },
+    follow_up: { border: "border-l-slate-500", badge: "bg-slate-600/20 text-slate-300", badgeText: "FOLLOW UP" },
+    upcoming: { border: "border-l-emerald-500", badge: "bg-emerald-600/20 text-emerald-300", badgeText: "UPCOMING" },
+  };
+
   // Activity type icons
   const typeIcons: Record<string, { bg: string; letter: string }> = {
     stage_change: { bg: "bg-purple-600/20 text-purple-400", letter: "S" },
@@ -67,6 +82,8 @@ export default function DashboardPage() {
     document_added: { bg: "bg-orange-600/20 text-orange-400", letter: "D" },
     opportunity_created: { bg: "bg-green-600/20 text-green-400", letter: "+" },
   };
+
+  const visibleActions = showAllActions ? actions : actions.slice(0, 10);
 
   return (
     <div>
@@ -125,6 +142,86 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Action Console — ranked next-best-actions */}
+      {actions.length > 0 && (
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <span className="text-lg">&#9889;</span>
+                Action Console
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {actions.filter((a) => a.action_type === "overdue").length} overdue &bull;{" "}
+                {actions.filter((a) => a.action_type === "today").length} due today &bull;{" "}
+                {actions.filter((a) => a.action_type === "set_next_step").length} need next step
+              </p>
+            </div>
+            <Link href="/pipeline" className="text-xs text-indigo-400 hover:text-indigo-300">
+              View Pipeline &rarr;
+            </Link>
+          </div>
+
+          <div className="space-y-2">
+            {visibleActions.map((action) => {
+              const style = actionStyles[action.action_type] || actionStyles.follow_up;
+              return (
+                <Link
+                  key={action.id}
+                  href={`/opportunities/${action.id}`}
+                  className={`block rounded-lg border border-slate-700/50 border-l-4 ${style.border} bg-slate-800/50 p-3 hover:bg-slate-700/50 transition-colors`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-white truncate">
+                          {action.title}
+                        </p>
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium flex-shrink-0 ${style.badge}`}>
+                          {style.badgeText}
+                        </span>
+                        <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300 flex-shrink-0">
+                          {stageLabelMap[action.stage] || action.stage}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        {action.account_name}
+                        {action.location_name && ` \u2022 ${action.location_name}`}
+                        {action.contact_name && action.contact_name.trim() && ` \u2022 ${action.contact_name}`}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {action.action_description}
+                      </p>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {action.estimated_value ? (
+                        <p className="text-sm font-medium text-emerald-400">
+                          ${Math.round(action.estimated_value).toLocaleString()}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-slate-600">No value</p>
+                      )}
+                      {action.product_count > 0 && (
+                        <p className="text-[10px] text-slate-500">{action.product_count} products</p>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+
+          {actions.length > 10 && (
+            <button
+              onClick={() => setShowAllActions(!showAllActions)}
+              className="mt-3 w-full rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-400 hover:bg-slate-700/50 transition-colors"
+            >
+              {showAllActions ? "Show Less" : `Show All ${actions.length} Actions`}
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Pipeline Stage Cards — mini horizontal bar */}
       <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
         <div className="flex items-center justify-between mb-3">
@@ -156,110 +253,6 @@ export default function DashboardPage() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Today's Priorities */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Overdue Next Steps */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <span className="text-red-400">&#9888;</span>
-              Overdue Next Steps
-            </h2>
-            <span className="rounded-full bg-red-600/20 px-2 py-0.5 text-xs font-medium text-red-400">
-              {priorities?.overdue_next_steps?.length || 0}
-            </span>
-          </div>
-          {!priorities?.overdue_next_steps?.length ? (
-            <p className="text-sm text-slate-500 py-4 text-center">
-              All caught up! No overdue items.
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {priorities.overdue_next_steps.map((item) => {
-                const daysOverdue = Math.floor(
-                  (new Date().getTime() -
-                    new Date(item.next_step_date).getTime()) /
-                    (1000 * 60 * 60 * 24)
-                );
-                return (
-                  <Link
-                    key={item.id}
-                    href={`/opportunities/${item.id}`}
-                    className="block rounded-lg border border-red-700/30 bg-red-900/10 p-3 hover:bg-red-900/20 transition-colors"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-white truncate">
-                          {item.title}
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          {item.account_name}
-                        </p>
-                      </div>
-                      <span className="text-xs font-medium text-red-400 whitespace-nowrap">
-                        {daysOverdue}d overdue
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1 truncate">
-                      {item.next_step_description || "No description"} &mdash;{" "}
-                      {stageLabelMap[item.stage] || item.stage}
-                    </p>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Stalled Deals */}
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-              <span className="text-yellow-400">&#9202;</span>
-              Stalled Deals
-            </h2>
-            <span className="rounded-full bg-yellow-600/20 px-2 py-0.5 text-xs font-medium text-yellow-400">
-              {priorities?.stalled_deals?.length || 0}
-            </span>
-          </div>
-          {!priorities?.stalled_deals?.length ? (
-            <p className="text-sm text-slate-500 py-4 text-center">
-              No stalled deals. Pipeline is moving!
-            </p>
-          ) : (
-            <div className="space-y-2 max-h-[300px] overflow-y-auto">
-              {priorities.stalled_deals.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/opportunities/${item.id}`}
-                  className="block rounded-lg border border-yellow-700/30 bg-yellow-900/10 p-3 hover:bg-yellow-900/20 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-white truncate">
-                        {item.title}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {item.account_name}
-                      </p>
-                    </div>
-                    <span className="text-xs font-medium text-yellow-400 whitespace-nowrap">
-                      {item.days_stalled}d stalled
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Stuck in {stageLabelMap[item.stage] || item.stage}
-                    {item.estimated_value
-                      ? ` \u2014 $${item.estimated_value.toLocaleString()}`
-                      : ""}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
         </div>
       </div>
 

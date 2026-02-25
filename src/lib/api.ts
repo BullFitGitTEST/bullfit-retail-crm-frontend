@@ -553,6 +553,29 @@ export interface EnhancedDashboardStats extends DashboardStats {
 }
 
 // ---------------------------------------------------------------------------
+// Action Console Types
+// ---------------------------------------------------------------------------
+
+export interface ActionItem {
+  id: string;
+  title: string;
+  stage: string;
+  probability: number;
+  estimated_value?: number;
+  next_step_date?: string;
+  next_step_description?: string;
+  account_name: string;
+  account_id: string;
+  location_name?: string;
+  contact_name?: string;
+  product_count: number;
+  last_activity_at?: string;
+  score: number;
+  action_type: "overdue" | "today" | "set_next_step" | "follow_up" | "upcoming";
+  action_description: string;
+}
+
+// ---------------------------------------------------------------------------
 // Reporting Types
 // ---------------------------------------------------------------------------
 
@@ -1019,6 +1042,10 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 
 export async function getDashboardStats(): Promise<EnhancedDashboardStats> {
   return request<EnhancedDashboardStats>("/api/dashboard");
+}
+
+export async function getDashboardActions(): Promise<ActionItem[]> {
+  return request<ActionItem[]>("/api/dashboard/actions");
 }
 
 export async function getReportingData(): Promise<ReportingData> {
