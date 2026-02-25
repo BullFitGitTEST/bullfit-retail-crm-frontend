@@ -254,6 +254,15 @@ export interface AccountInput {
   owner_id?: string;
 }
 
+export type LocationType = "door" | "distribution_center" | "warehouse" | "headquarters";
+
+export const LOCATION_TYPES: { id: LocationType; label: string }[] = [
+  { id: "door", label: "Retail Door" },
+  { id: "distribution_center", label: "Distribution Center" },
+  { id: "warehouse", label: "Warehouse" },
+  { id: "headquarters", label: "Headquarters" },
+];
+
 export interface Location {
   id: string;
   account_id: string;
@@ -269,6 +278,10 @@ export interface Location {
   foot_traffic_estimate?: number;
   is_active: boolean;
   notes?: string;
+  location_type?: LocationType;
+  dc_region?: string;
+  door_count?: number;
+  active_opps?: number;
   created_at: string;
   updated_at: string;
 }
@@ -285,6 +298,9 @@ export interface LocationInput {
   square_footage?: number;
   foot_traffic_estimate?: number;
   notes?: string;
+  location_type?: LocationType;
+  dc_region?: string;
+  door_count?: number;
 }
 
 export interface RetailContact {
@@ -325,6 +341,23 @@ export interface RetailContactInput {
   apollo_id?: string;
 }
 
+export type OpportunityType =
+  | "new_authorization"
+  | "line_review"
+  | "new_sku_add"
+  | "promo_endcap"
+  | "reorder_expansion"
+  | "dc_setup";
+
+export const OPPORTUNITY_TYPES: { id: OpportunityType; label: string }[] = [
+  { id: "new_authorization", label: "New Authorization" },
+  { id: "line_review", label: "Line Review" },
+  { id: "new_sku_add", label: "New SKU Add" },
+  { id: "promo_endcap", label: "Promo / Endcap" },
+  { id: "reorder_expansion", label: "Reorder & Expansion" },
+  { id: "dc_setup", label: "DC Setup & EDI" },
+];
+
 export interface Opportunity {
   id: string;
   account_id: string;
@@ -343,6 +376,7 @@ export interface Opportunity {
   owner_name?: string;
   title: string;
   stage: OpportunityStage;
+  opportunity_type?: OpportunityType;
   estimated_value?: number;
   estimated_monthly_volume?: number;
   expected_close_date?: string;
@@ -360,6 +394,7 @@ export interface Opportunity {
   products?: OpportunityProduct[];
   activities?: OpportunityActivity[];
   documents?: Document[];
+  checklist?: ChecklistItem[];
 }
 
 export interface OpportunityInput {
@@ -369,6 +404,7 @@ export interface OpportunityInput {
   owner_id?: string;
   title?: string;
   stage?: OpportunityStage;
+  opportunity_type?: OpportunityType;
   estimated_value?: number;
   estimated_monthly_volume?: number;
   expected_close_date?: string;
@@ -385,10 +421,36 @@ export interface OpportunityProduct {
   sku?: string;
   quantity?: number;
   unit_price?: number;
+  wholesale_price?: number;
+  msrp?: number;
+  margin_percent?: number;
+  case_pack?: number;
   total_price?: number;
   status: string;
+  rejection_reason?: string;
   notes?: string;
   created_at: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  opportunity_id: string;
+  stage: string;
+  item_key: string;
+  is_completed: boolean;
+  completed_at?: string;
+  completed_by?: string;
+  created_at: string;
+}
+
+export interface StageGateError {
+  error: string;
+  missing_requirements: {
+    type: "field" | "checklist" | "products";
+    key: string;
+    label: string;
+  }[];
+  can_force: boolean;
 }
 
 export interface OpportunityActivity {
@@ -1137,12 +1199,26 @@ export async function updateOpportunity(
 export async function moveOpportunityStage(
   id: string,
   stage: OpportunityStage,
-  lost_reason?: string
+  lost_reason?: string,
+  force?: boolean
 ): Promise<Opportunity> {
-  return request<Opportunity>(`/api/opportunities/${id}/stage`, {
+  const res = await fetch(`${API_URL}/api/opportunities/${id}/stage`, {
     method: "PATCH",
-    body: JSON.stringify({ stage, lost_reason }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage, lost_reason, force }),
   });
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ error: "Unknown error" }));
+    if (res.status === 400 && body.missing_requirements) {
+      // Return the gate error as a thrown object with special shape
+      const err = new Error(body.error) as Error & { gateError: StageGateError };
+      err.gateError = body as StageGateError;
+      throw err;
+    }
+    throw new Error(body.error || `API error ${res.status}`);
+  }
+  return res.json();
 }
 
 export async function deleteOpportunity(id: string): Promise<void> {
@@ -1157,12 +1233,37 @@ export async function addOpportunityProduct(
     sku?: string;
     quantity?: number;
     unit_price?: number;
+    wholesale_price?: number;
+    msrp?: number;
+    case_pack?: number;
     notes?: string;
   }
 ): Promise<OpportunityProduct> {
   return request<OpportunityProduct>(
     `/api/opportunities/${opportunityId}/products`,
     { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+export async function updateOpportunityProduct(
+  opportunityId: string,
+  productId: string,
+  data: Partial<{
+    product_name: string;
+    sku: string;
+    quantity: number;
+    unit_price: number;
+    wholesale_price: number;
+    msrp: number;
+    case_pack: number;
+    status: string;
+    rejection_reason: string;
+    notes: string;
+  }>
+): Promise<OpportunityProduct> {
+  return request<OpportunityProduct>(
+    `/api/opportunities/${opportunityId}/products/${productId}`,
+    { method: "PATCH", body: JSON.stringify(data) }
   );
 }
 
@@ -1232,6 +1333,28 @@ export async function removeOpportunityDocument(
   await request<void>(
     `/api/opportunities/${opportunityId}/documents/${documentId}`,
     { method: "DELETE" }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Checklist
+// ---------------------------------------------------------------------------
+
+export async function getOpportunityChecklist(
+  opportunityId: string
+): Promise<ChecklistItem[]> {
+  return request<ChecklistItem[]>(
+    `/api/opportunities/${opportunityId}/checklist`
+  );
+}
+
+export async function toggleChecklistItem(
+  opportunityId: string,
+  data: { stage: string; item_key: string; is_completed: boolean }
+): Promise<ChecklistItem> {
+  return request<ChecklistItem>(
+    `/api/opportunities/${opportunityId}/checklist`,
+    { method: "POST", body: JSON.stringify(data) }
   );
 }
 
