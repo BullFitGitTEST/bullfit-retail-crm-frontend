@@ -420,6 +420,260 @@ export interface Document {
 export type OpportunityPipelineView = Record<string, Opportunity[]>;
 
 // ---------------------------------------------------------------------------
+// Enhanced Dashboard Types
+// ---------------------------------------------------------------------------
+
+export interface TodayPriorities {
+  overdue_next_steps: {
+    id: string;
+    title: string;
+    stage: string;
+    next_step_date: string;
+    next_step_description?: string;
+    estimated_value?: number;
+    probability?: number;
+    account_name?: string;
+    location_name?: string;
+  }[];
+  stalled_deals: {
+    id: string;
+    title: string;
+    stage: string;
+    updated_at: string;
+    estimated_value?: number;
+    account_name?: string;
+    days_stalled: number;
+    last_activity_at?: string;
+  }[];
+  upcoming_next_steps: {
+    id: string;
+    title: string;
+    stage: string;
+    next_step_date: string;
+    next_step_description?: string;
+    estimated_value?: number;
+    account_name?: string;
+  }[];
+}
+
+export interface OpportunityPipelineStats {
+  count: number;
+  total_value: number;
+  weighted_value: number;
+}
+
+export interface EnhancedDashboardStats extends DashboardStats {
+  today_priorities: TodayPriorities;
+  opportunity_pipeline: Record<string, OpportunityPipelineStats>;
+  pipeline_summary: {
+    total_active: number;
+    total_value: number;
+    weighted_value: number;
+    missing_next_step: number;
+  };
+  won_lost: {
+    won_this_month: number;
+    won_value: number;
+    lost_this_month: number;
+    lost_value: number;
+  };
+  recent_opportunity_activities: {
+    id: string;
+    type: string;
+    title: string;
+    description?: string;
+    created_at: string;
+    opportunity_id?: string;
+    opportunity_title?: string;
+    account_name?: string;
+  }[];
+  total_opportunities: number;
+}
+
+// ---------------------------------------------------------------------------
+// Reporting Types
+// ---------------------------------------------------------------------------
+
+export interface ReportingData {
+  conversion_funnel: {
+    stage: string;
+    count: number;
+    total_value: number;
+    percentage: number;
+  }[];
+  time_to_po: {
+    total_won: number;
+    avg_days_to_close: number | null;
+    min_days: number | null;
+    max_days: number | null;
+    avg_deal_value: number;
+  };
+  stage_velocity: {
+    stage: string;
+    transitions: number;
+    avg_days_in_stage: number;
+  }[];
+  forecast: {
+    by_stage: {
+      stage: string;
+      count: number;
+      total_value: number;
+      weighted_value: number;
+    }[];
+    totals: {
+      count: number;
+      total_value: number;
+      weighted_value: number;
+    };
+  };
+  win_loss: {
+    win_rate: number;
+    won_total: number;
+    lost_total: number;
+    monthly: {
+      month: string;
+      won: number;
+      won_value: number;
+      lost: number;
+      lost_value: number;
+    }[];
+  };
+  monthly_trend: {
+    month: string;
+    created: number;
+    total_value: number;
+  }[];
+  top_accounts: {
+    id: string;
+    name: string;
+    opp_count: number;
+    total_value: number;
+    weighted_value: number;
+  }[];
+  lost_reasons: {
+    reason: string;
+    count: number;
+    lost_value: number;
+  }[];
+}
+
+// ---------------------------------------------------------------------------
+// Stage Checklists
+// ---------------------------------------------------------------------------
+
+export interface StageChecklist {
+  stage: OpportunityStage;
+  items: { key: string; label: string; required: boolean }[];
+}
+
+export const STAGE_CHECKLISTS: StageChecklist[] = [
+  {
+    stage: "targeted",
+    items: [
+      { key: "research_done", label: "Researched account (website, social, reviews)", required: true },
+      { key: "contact_identified", label: "Identified key decision maker", required: false },
+      { key: "fit_assessed", label: "Assessed product-market fit for this store", required: true },
+    ],
+  },
+  {
+    stage: "contact_found",
+    items: [
+      { key: "contact_added", label: "Added primary contact with email/phone", required: true },
+      { key: "contact_verified", label: "Verified contact info is current", required: false },
+      { key: "outreach_planned", label: "Planned first outreach approach", required: true },
+    ],
+  },
+  {
+    stage: "first_touch",
+    items: [
+      { key: "intro_sent", label: "Sent introduction email or made first call", required: true },
+      { key: "value_prop_shared", label: "Shared initial value proposition", required: true },
+      { key: "response_received", label: "Received response / confirmed interest", required: false },
+    ],
+  },
+  {
+    stage: "meeting_booked",
+    items: [
+      { key: "meeting_scheduled", label: "Meeting date and time confirmed", required: true },
+      { key: "agenda_sent", label: "Sent meeting agenda or talking points", required: false },
+      { key: "materials_prepared", label: "Prepared pitch deck / product catalog", required: true },
+    ],
+  },
+  {
+    stage: "pitch_delivered",
+    items: [
+      { key: "pitch_completed", label: "Completed product presentation", required: true },
+      { key: "pricing_shared", label: "Shared pricing and terms", required: true },
+      { key: "objections_addressed", label: "Addressed initial objections", required: false },
+      { key: "next_steps_agreed", label: "Agreed on next steps with buyer", required: true },
+    ],
+  },
+  {
+    stage: "samples_sent",
+    items: [
+      { key: "samples_shipped", label: "Shipped product samples", required: true },
+      { key: "tracking_sent", label: "Sent tracking info to buyer", required: false },
+      { key: "followup_scheduled", label: "Scheduled sample follow-up date", required: true },
+      { key: "feedback_collected", label: "Collected sample feedback", required: false },
+    ],
+  },
+  {
+    stage: "follow_up",
+    items: [
+      { key: "feedback_reviewed", label: "Reviewed buyer feedback on samples", required: true },
+      { key: "concerns_resolved", label: "Resolved any product concerns", required: false },
+      { key: "decision_timeline", label: "Confirmed decision timeline", required: true },
+      { key: "competitive_position", label: "Assessed competitive positioning", required: false },
+    ],
+  },
+  {
+    stage: "vendor_setup",
+    items: [
+      { key: "vendor_form_submitted", label: "Submitted vendor application / W-9", required: true },
+      { key: "insurance_provided", label: "Provided insurance certificate (if required)", required: false },
+      { key: "terms_negotiated", label: "Negotiated payment terms", required: true },
+      { key: "vendor_approved", label: "Received vendor approval", required: false },
+    ],
+  },
+  {
+    stage: "authorization_pending",
+    items: [
+      { key: "authorization_submitted", label: "Submitted product authorization request", required: true },
+      { key: "planogram_confirmed", label: "Confirmed shelf placement / planogram", required: false },
+      { key: "pricing_finalized", label: "Finalized retail pricing and margins", required: true },
+      { key: "launch_date_set", label: "Set target launch / first order date", required: false },
+    ],
+  },
+  {
+    stage: "po_received",
+    items: [
+      { key: "po_verified", label: "Verified PO details (SKUs, quantities, pricing)", required: true },
+      { key: "fulfillment_scheduled", label: "Scheduled fulfillment / shipping", required: true },
+      { key: "invoice_sent", label: "Sent invoice", required: false },
+      { key: "delivery_confirmed", label: "Confirmed delivery date with buyer", required: true },
+    ],
+  },
+  {
+    stage: "on_shelf",
+    items: [
+      { key: "shelf_verified", label: "Verified products are on shelf", required: true },
+      { key: "staff_trained", label: "Trained store staff on product", required: false },
+      { key: "marketing_placed", label: "Placed POP / marketing materials", required: false },
+      { key: "reorder_schedule", label: "Discussed reorder schedule", required: true },
+    ],
+  },
+  {
+    stage: "reorder_cycle",
+    items: [
+      { key: "reorder_confirmed", label: "Confirmed reorder schedule is active", required: true },
+      { key: "performance_reviewed", label: "Reviewed sell-through performance", required: false },
+      { key: "expansion_discussed", label: "Discussed product line expansion", required: false },
+      { key: "relationship_maintained", label: "Scheduled regular check-in cadence", required: true },
+    ],
+  },
+];
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -672,8 +926,12 @@ export async function getTeamMembers(): Promise<TeamMember[]> {
 // Dashboard
 // ---------------------------------------------------------------------------
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  return request<DashboardStats>("/api/dashboard");
+export async function getDashboardStats(): Promise<EnhancedDashboardStats> {
+  return request<EnhancedDashboardStats>("/api/dashboard");
+}
+
+export async function getReportingData(): Promise<ReportingData> {
+  return request<ReportingData>("/api/reporting");
 }
 
 // ---------------------------------------------------------------------------
@@ -942,6 +1200,38 @@ export async function addOpportunityActivity(
   return request<OpportunityActivity>(
     `/api/opportunities/${opportunityId}/activities`,
     { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+// Opportunity Documents
+export async function addOpportunityDocument(
+  opportunityId: string,
+  data: { name: string; type: string; url?: string; status?: string; notes?: string }
+): Promise<Document> {
+  return request<Document>(
+    `/api/opportunities/${opportunityId}/documents`,
+    { method: "POST", body: JSON.stringify(data) }
+  );
+}
+
+export async function updateOpportunityDocument(
+  opportunityId: string,
+  documentId: string,
+  data: { status?: string; url?: string; notes?: string }
+): Promise<Document> {
+  return request<Document>(
+    `/api/opportunities/${opportunityId}/documents/${documentId}`,
+    { method: "PATCH", body: JSON.stringify(data) }
+  );
+}
+
+export async function removeOpportunityDocument(
+  opportunityId: string,
+  documentId: string
+): Promise<void> {
+  await request<void>(
+    `/api/opportunities/${opportunityId}/documents/${documentId}`,
+    { method: "DELETE" }
   );
 }
 

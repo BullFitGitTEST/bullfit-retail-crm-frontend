@@ -9,14 +9,20 @@ import {
   moveOpportunityStage,
   addOpportunityProduct,
   updateProductStatus,
+  removeOpportunityProduct,
   addOpportunityActivity,
+  addOpportunityDocument,
+  updateOpportunityDocument,
+  removeOpportunityDocument,
   OPPORTUNITY_STAGES,
+  STAGE_CHECKLISTS,
 } from "@/lib/api";
 import type {
   Opportunity,
   OpportunityProduct,
   OpportunityActivity,
   OpportunityStage,
+  Document,
 } from "@/lib/api";
 
 const stageLabelMap: Record<string, string> = {};
@@ -24,7 +30,7 @@ for (const s of OPPORTUNITY_STAGES) {
   stageLabelMap[s.id] = s.label;
 }
 
-type TabId = "activity" | "products" | "details" | "edit";
+type TabId = "activity" | "products" | "documents" | "checklist" | "details" | "edit";
 
 export default function OpportunityDetailPage() {
   const { id } = useParams();
@@ -50,13 +56,29 @@ export default function OpportunityDetailPage() {
 
   async function handleStageChange(newStage: string) {
     if (!opp) return;
+    if (newStage === "closed_lost") {
+      const reason = prompt("Why was this deal lost?");
+      if (reason === null) return; // cancelled
+      try {
+        const updated = await moveOpportunityStage(
+          opp.id,
+          newStage as OpportunityStage,
+          reason || undefined
+        );
+        setOpp((prev) => (prev ? { ...prev, ...updated } : prev));
+        fetchOpp();
+      } catch (err) {
+        console.error("Failed to update stage", err);
+      }
+      return;
+    }
     try {
       const updated = await moveOpportunityStage(
         opp.id,
         newStage as OpportunityStage
       );
       setOpp((prev) => (prev ? { ...prev, ...updated } : prev));
-      fetchOpp(); // refresh activities
+      fetchOpp();
     } catch (err) {
       console.error("Failed to update stage", err);
     }
@@ -78,6 +100,15 @@ export default function OpportunityDetailPage() {
     );
   }
 
+  const isOverdue =
+    opp.next_step_date && new Date(opp.next_step_date) < new Date();
+  const daysOverdue = isOverdue
+    ? Math.floor(
+        (new Date().getTime() - new Date(opp.next_step_date!).getTime()) /
+          (1000 * 60 * 60 * 24)
+      )
+    : 0;
+
   return (
     <div>
       <Link
@@ -87,6 +118,22 @@ export default function OpportunityDetailPage() {
         &larr; Back to {opp.account_name}
       </Link>
 
+      {/* Overdue Banner */}
+      {isOverdue && opp.stage !== "closed_lost" && opp.stage !== "on_shelf" && opp.stage !== "reorder_cycle" && (
+        <div className="mb-4 rounded-lg border border-red-700/50 bg-red-900/20 px-4 py-3 flex items-center gap-3">
+          <span className="text-red-400 text-lg">&#9888;</span>
+          <div>
+            <p className="text-sm font-medium text-red-300">
+              Next step is {daysOverdue} day{daysOverdue !== 1 ? "s" : ""} overdue
+            </p>
+            <p className="text-xs text-red-400/80">
+              {opp.next_step_description || "No description"} &mdash; was due{" "}
+              {new Date(opp.next_step_date!).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-6 flex items-start justify-between">
         <div>
@@ -95,13 +142,13 @@ export default function OpportunityDetailPage() {
             <span>{opp.account_name}</span>
             {opp.location_name && (
               <>
-                <span className="text-slate-600">\u2022</span>
+                <span className="text-slate-600">{"\u2022"}</span>
                 <span>{opp.location_name}</span>
               </>
             )}
             {opp.contact_first_name && (
               <>
-                <span className="text-slate-600">\u2022</span>
+                <span className="text-slate-600">{"\u2022"}</span>
                 <span>
                   {opp.contact_first_name} {opp.contact_last_name}
                 </span>
@@ -166,20 +213,38 @@ export default function OpportunityDetailPage() {
           <p className="text-lg font-bold text-emerald-400">
             ${(opp.estimated_value || 0).toLocaleString()}
           </p>
+          {opp.estimated_monthly_volume ? (
+            <p className="text-xs text-slate-500">
+              ${opp.estimated_monthly_volume.toLocaleString()}/mo
+            </p>
+          ) : null}
         </div>
-        <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
+        <div
+          className={`rounded-xl border p-4 ${
+            isOverdue
+              ? "border-red-700/50 bg-red-900/10"
+              : "border-slate-700 bg-slate-800"
+          }`}
+        >
           <p className="text-xs text-slate-400 uppercase mb-1">Next Step</p>
           {opp.next_step_date ? (
             <>
-              <p className="text-sm text-white">
+              <p
+                className={`text-sm font-medium ${
+                  isOverdue ? "text-red-400" : "text-white"
+                }`}
+              >
                 {new Date(opp.next_step_date).toLocaleDateString()}
+                {isOverdue && (
+                  <span className="ml-2 text-xs">({daysOverdue}d overdue)</span>
+                )}
               </p>
               <p className="text-xs text-slate-400 truncate">
                 {opp.next_step_description || "No description"}
               </p>
             </>
           ) : (
-            <p className="text-sm text-slate-500">Not set</p>
+            <p className="text-sm text-yellow-400">Not set &#x26A0;</p>
           )}
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
@@ -201,7 +266,7 @@ export default function OpportunityDetailPage() {
 
       {/* Tabs */}
       <div className="border-b border-slate-700 mb-6">
-        <div className="flex gap-6">
+        <div className="flex gap-6 overflow-x-auto">
           {(
             [
               { id: "activity" as const, label: "Activity" },
@@ -209,6 +274,11 @@ export default function OpportunityDetailPage() {
                 id: "products" as const,
                 label: `Products (${opp.products?.length || 0})`,
               },
+              {
+                id: "documents" as const,
+                label: `Documents (${opp.documents?.length || 0})`,
+              },
+              { id: "checklist" as const, label: "Checklist" },
               { id: "details" as const, label: "Details" },
               { id: "edit" as const, label: "Edit" },
             ] as const
@@ -216,7 +286,7 @@ export default function OpportunityDetailPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`pb-3 text-sm font-medium transition-colors ${
+              className={`pb-3 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-b-2 border-indigo-500 text-white"
                   : "text-slate-400 hover:text-white"
@@ -235,13 +305,17 @@ export default function OpportunityDetailPage() {
       {activeTab === "products" && (
         <ProductsTab opp={opp} onRefresh={fetchOpp} />
       )}
+      {activeTab === "documents" && (
+        <DocumentsTab opp={opp} onRefresh={fetchOpp} />
+      )}
+      {activeTab === "checklist" && <ChecklistTab opp={opp} />}
       {activeTab === "details" && <DetailsTab opp={opp} />}
       {activeTab === "edit" && <EditTab opp={opp} onSaved={fetchOpp} />}
     </div>
   );
 }
 
-// === ACTIVITY TAB ===
+// === ACTIVITY TAB (enhanced with structured types) ===
 function ActivityTab({
   opp,
   onRefresh,
@@ -249,7 +323,23 @@ function ActivityTab({
   opp: Opportunity;
   onRefresh: () => void;
 }) {
+  const [activityType, setActivityType] = useState<string>("note");
   const [noteText, setNoteText] = useState("");
+  const [callData, setCallData] = useState({
+    direction: "outbound",
+    duration: "",
+    outcome: "connected",
+    notes: "",
+  });
+  const [emailData, setEmailData] = useState({
+    subject: "",
+    notes: "",
+  });
+  const [meetingData, setMeetingData] = useState({
+    subject: "",
+    duration: "",
+    notes: "",
+  });
 
   async function handleAddNote() {
     if (!noteText.trim()) return;
@@ -266,6 +356,63 @@ function ActivityTab({
     }
   }
 
+  async function handleLogCall() {
+    try {
+      await addOpportunityActivity(opp.id, {
+        type: "call",
+        title: `${callData.direction === "outbound" ? "Outbound" : "Inbound"} call — ${callData.outcome}`,
+        description: callData.notes || undefined,
+        metadata: {
+          direction: callData.direction,
+          duration_minutes: callData.duration ? Number(callData.duration) : null,
+          outcome: callData.outcome,
+        },
+      });
+      setCallData({ direction: "outbound", duration: "", outcome: "connected", notes: "" });
+      setActivityType("note");
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to log call", err);
+    }
+  }
+
+  async function handleLogEmail() {
+    if (!emailData.subject.trim()) return;
+    try {
+      await addOpportunityActivity(opp.id, {
+        type: "email",
+        title: `Email: ${emailData.subject}`,
+        description: emailData.notes || undefined,
+        metadata: { subject: emailData.subject },
+      });
+      setEmailData({ subject: "", notes: "" });
+      setActivityType("note");
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to log email", err);
+    }
+  }
+
+  async function handleLogMeeting() {
+    if (!meetingData.subject.trim()) return;
+    try {
+      await addOpportunityActivity(opp.id, {
+        type: "meeting",
+        title: `Meeting: ${meetingData.subject}`,
+        description: meetingData.notes || undefined,
+        metadata: {
+          subject: meetingData.subject,
+          duration_minutes: meetingData.duration ? Number(meetingData.duration) : null,
+        },
+      });
+      setMeetingData({ subject: "", duration: "", notes: "" });
+      setActivityType("note");
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to log meeting", err);
+    }
+  }
+
   const typeIcons: Record<string, { bg: string; letter: string }> = {
     stage_change: { bg: "bg-purple-600/20 text-purple-400", letter: "S" },
     note: { bg: "bg-blue-600/20 text-blue-400", letter: "N" },
@@ -273,29 +420,196 @@ function ActivityTab({
     email: { bg: "bg-yellow-600/20 text-yellow-400", letter: "E" },
     meeting: { bg: "bg-teal-600/20 text-teal-400", letter: "M" },
     product_added: { bg: "bg-emerald-600/20 text-emerald-400", letter: "P" },
+    document_added: { bg: "bg-orange-600/20 text-orange-400", letter: "D" },
     opportunity_created: { bg: "bg-green-600/20 text-green-400", letter: "+" },
   };
 
   return (
     <div>
+      {/* Activity Type Selector */}
       <div className="mb-4 flex gap-2">
-        <input
-          type="text"
-          value={noteText}
-          onChange={(e) => setNoteText(e.target.value)}
-          placeholder="Add a note..."
-          className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
-          onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
-        />
-        <button
-          onClick={handleAddNote}
-          disabled={!noteText.trim()}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
-        >
-          Add Note
-        </button>
+        {[
+          { id: "note", label: "Note", icon: "N" },
+          { id: "call", label: "Call", icon: "C" },
+          { id: "email", label: "Email", icon: "E" },
+          { id: "meeting", label: "Meeting", icon: "M" },
+        ].map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setActivityType(t.id)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              activityType === t.id
+                ? "bg-indigo-600 text-white"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
+      {/* Note form */}
+      {activityType === "note" && (
+        <div className="mb-4 flex gap-2">
+          <input
+            type="text"
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="Add a note..."
+            className="flex-1 rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-white placeholder-slate-400 focus:border-indigo-500 focus:outline-none"
+            onKeyDown={(e) => e.key === "Enter" && handleAddNote()}
+          />
+          <button
+            onClick={handleAddNote}
+            disabled={!noteText.trim()}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+          >
+            Add Note
+          </button>
+        </div>
+      )}
+
+      {/* Call form */}
+      {activityType === "call" && (
+        <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Direction</label>
+              <select
+                value={callData.direction}
+                onChange={(e) => setCallData({ ...callData, direction: e.target.value })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="outbound">Outbound</option>
+                <option value="inbound">Inbound</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Duration (min)</label>
+              <input
+                type="number"
+                value={callData.duration}
+                onChange={(e) => setCallData({ ...callData, duration: e.target.value })}
+                placeholder="5"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Outcome</label>
+              <select
+                value={callData.outcome}
+                onChange={(e) => setCallData({ ...callData, outcome: e.target.value })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              >
+                <option value="connected">Connected</option>
+                <option value="voicemail">Voicemail</option>
+                <option value="no_answer">No Answer</option>
+                <option value="callback">Callback Requested</option>
+                <option value="wrong_number">Wrong Number</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Notes</label>
+            <input
+              value={callData.notes}
+              onChange={(e) => setCallData({ ...callData, notes: e.target.value })}
+              placeholder="Call notes..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleLogCall}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              Log Call
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Email form */}
+      {activityType === "email" && (
+        <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3">
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Subject</label>
+            <input
+              value={emailData.subject}
+              onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+              placeholder="Email subject..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Notes / Summary</label>
+            <textarea
+              value={emailData.notes}
+              onChange={(e) => setEmailData({ ...emailData, notes: e.target.value })}
+              rows={2}
+              placeholder="Key points from the email..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleLogEmail}
+              disabled={!emailData.subject.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              Log Email
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Meeting form */}
+      {activityType === "meeting" && (
+        <div className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Meeting Subject</label>
+              <input
+                value={meetingData.subject}
+                onChange={(e) => setMeetingData({ ...meetingData, subject: e.target.value })}
+                placeholder="Product pitch meeting..."
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Duration (min)</label>
+              <input
+                type="number"
+                value={meetingData.duration}
+                onChange={(e) => setMeetingData({ ...meetingData, duration: e.target.value })}
+                placeholder="30"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Notes / Outcomes</label>
+            <textarea
+              value={meetingData.notes}
+              onChange={(e) => setMeetingData({ ...meetingData, notes: e.target.value })}
+              rows={2}
+              placeholder="Meeting outcomes, action items..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div className="flex justify-end">
+            <button
+              onClick={handleLogMeeting}
+              disabled={!meetingData.subject.trim()}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              Log Meeting
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Timeline */}
       <div className="space-y-3">
         {(opp.activities?.length || 0) === 0 ? (
           <p className="text-sm text-slate-500">No activity yet.</p>
@@ -323,6 +637,17 @@ function ActivityTab({
                     <p className="text-sm text-slate-400 mt-1">
                       {a.description}
                     </p>
+                  )}
+                  {/* Show metadata for calls/meetings */}
+                  {a.type === "call" && a.metadata && (
+                    <div className="mt-1 flex gap-3 text-xs text-slate-500">
+                      {a.metadata.duration_minutes && (
+                        <span>{a.metadata.duration_minutes} min</span>
+                      )}
+                      {a.metadata.outcome && (
+                        <span className="capitalize">{a.metadata.outcome}</span>
+                      )}
+                    </div>
                   )}
                   <p className="text-xs text-slate-500 mt-1">
                     {new Date(a.created_at).toLocaleString()}
@@ -384,6 +709,16 @@ function ProductsTab({
     }
   }
 
+  async function handleRemoveProduct(productId: string) {
+    if (!confirm("Remove this product from the opportunity?")) return;
+    try {
+      await removeOpportunityProduct(opp.id, productId);
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to remove product", err);
+    }
+  }
+
   const statusColors: Record<string, string> = {
     pitched: "bg-blue-600/20 text-blue-300",
     sampled: "bg-yellow-600/20 text-yellow-300",
@@ -433,22 +768,16 @@ function ProductsTab({
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Qty
-                </label>
+                <label className="block text-xs text-slate-400 mb-1">Qty</label>
                 <input
                   type="number"
                   value={form.quantity}
-                  onChange={(e) =>
-                    setForm({ ...form, quantity: e.target.value })
-                  }
+                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
                   className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="block text-xs text-slate-400 mb-1">
-                  $/unit
-                </label>
+                <label className="block text-xs text-slate-400 mb-1">$/unit</label>
                 <input
                   type="number"
                   step="0.01"
@@ -507,6 +836,7 @@ function ProductsTab({
                 <th className="px-4 py-2 text-center text-xs font-medium uppercase text-slate-400">
                   Status
                 </th>
+                <th className="px-4 py-2 w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/50">
@@ -525,7 +855,9 @@ function ProductsTab({
                     {p.unit_price ? `$${p.unit_price}` : "\u2014"}
                   </td>
                   <td className="px-4 py-2 text-right text-sm font-medium text-white">
-                    {p.total_price ? `$${p.total_price.toLocaleString()}` : "\u2014"}
+                    {p.total_price
+                      ? `$${p.total_price.toLocaleString()}`
+                      : "\u2014"}
                   </td>
                   <td className="px-4 py-2 text-center">
                     <select
@@ -544,6 +876,14 @@ function ProductsTab({
                       <option value="on_shelf">On Shelf</option>
                     </select>
                   </td>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => handleRemoveProduct(p.id)}
+                      className="text-xs text-red-400 hover:text-red-300"
+                    >
+                      &#10005;
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -554,12 +894,353 @@ function ProductsTab({
   );
 }
 
+// === DOCUMENTS TAB ===
+function DocumentsTab({
+  opp,
+  onRefresh,
+}: {
+  opp: Opportunity;
+  onRefresh: () => void;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    type: "vendor_form",
+    url: "",
+    notes: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  const docTypes = [
+    { value: "vendor_form", label: "Vendor Form" },
+    { value: "w9", label: "W-9" },
+    { value: "insurance", label: "Insurance Certificate" },
+    { value: "price_list", label: "Price List" },
+    { value: "pitch_deck", label: "Pitch Deck" },
+    { value: "purchase_order", label: "Purchase Order" },
+    { value: "invoice", label: "Invoice" },
+    { value: "contract", label: "Contract" },
+    { value: "planogram", label: "Planogram" },
+    { value: "other", label: "Other" },
+  ];
+
+  const statusColors: Record<string, string> = {
+    draft: "bg-slate-600/20 text-slate-300",
+    sent: "bg-blue-600/20 text-blue-300",
+    received: "bg-yellow-600/20 text-yellow-300",
+    approved: "bg-green-600/20 text-green-300",
+    rejected: "bg-red-600/20 text-red-300",
+    signed: "bg-emerald-600/20 text-emerald-300",
+  };
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      await addOpportunityDocument(opp.id, {
+        name: form.name,
+        type: form.type,
+        url: form.url || undefined,
+        notes: form.notes || undefined,
+      });
+      setShowAdd(false);
+      setForm({ name: "", type: "vendor_form", url: "", notes: "" });
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to add document", err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleStatusChange(docId: string, status: string) {
+    try {
+      await updateOpportunityDocument(opp.id, docId, { status });
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to update document", err);
+    }
+  }
+
+  async function handleRemove(docId: string) {
+    if (!confirm("Remove this document?")) return;
+    try {
+      await removeOpportunityDocument(opp.id, docId);
+      onRefresh();
+    } catch (err) {
+      console.error("Failed to remove document", err);
+    }
+  }
+
+  return (
+    <div>
+      <div className="flex justify-end mb-4">
+        <button
+          onClick={() => setShowAdd(!showAdd)}
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+        >
+          + Add Document
+        </button>
+      </div>
+
+      {showAdd && (
+        <form
+          onSubmit={handleAdd}
+          className="mb-4 rounded-xl border border-slate-700 bg-slate-800 p-4 space-y-3"
+        >
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">
+                Document Name *
+              </label>
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                placeholder="Vendor Application Form"
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Type</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              >
+                {docTypes.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">URL (optional)</label>
+            <input
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              placeholder="https://drive.google.com/..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-400 mb-1">Notes</label>
+            <input
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Any notes..."
+              className="w-full rounded border border-slate-600 bg-slate-900 px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <button
+              type="button"
+              onClick={() => setShowAdd(false)}
+              className="rounded border border-slate-600 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+            >
+              {saving ? "Adding..." : "Add Document"}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {(opp.documents?.length || 0) === 0 ? (
+        <p className="text-sm text-slate-500 text-center py-8">
+          No documents yet. Add vendor forms, W-9s, contracts, and more.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {opp.documents?.map((doc) => (
+            <div
+              key={doc.id}
+              className="flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-3"
+            >
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-orange-600/20 text-orange-400 text-xs font-medium">
+                {doc.type === "vendor_form" ? "VF" : doc.type === "w9" ? "W9" : doc.type === "purchase_order" ? "PO" : doc.type === "invoice" ? "IN" : doc.type === "contract" ? "CT" : doc.type === "pitch_deck" ? "PD" : doc.type === "insurance" ? "IC" : doc.type === "price_list" ? "PL" : doc.type === "planogram" ? "PG" : "OT"}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  {doc.url ? (
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-medium text-indigo-400 hover:text-indigo-300 truncate"
+                    >
+                      {doc.name}
+                    </a>
+                  ) : (
+                    <span className="text-sm font-medium text-white truncate">
+                      {doc.name}
+                    </span>
+                  )}
+                  <span className="text-xs text-slate-500 capitalize">
+                    {doc.type.replace(/_/g, " ")}
+                  </span>
+                </div>
+                {doc.notes && (
+                  <p className="text-xs text-slate-500 truncate">{doc.notes}</p>
+                )}
+              </div>
+              <select
+                value={doc.status}
+                onChange={(e) => handleStatusChange(doc.id, e.target.value)}
+                className={`rounded px-2 py-0.5 text-xs font-medium border-0 ${
+                  statusColors[doc.status] || "bg-slate-600/20 text-slate-300"
+                }`}
+              >
+                <option value="draft">Draft</option>
+                <option value="sent">Sent</option>
+                <option value="received">Received</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+                <option value="signed">Signed</option>
+              </select>
+              <button
+                onClick={() => handleRemove(doc.id)}
+                className="text-xs text-red-400 hover:text-red-300"
+              >
+                &#10005;
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// === CHECKLIST TAB ===
+function ChecklistTab({ opp }: { opp: Opportunity }) {
+  // Store checklist state in localStorage keyed by opportunity id
+  const storageKey = `opp_checklist_${opp.id}`;
+  const [checked, setChecked] = useState<Record<string, boolean>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      return JSON.parse(localStorage.getItem(storageKey) || "{}");
+    } catch {
+      return {};
+    }
+  });
+
+  function toggleItem(key: string) {
+    setChecked((prev) => {
+      const next = { ...prev, [key]: !prev[key] };
+      localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
+    });
+  }
+
+  const currentChecklist = STAGE_CHECKLISTS.find(
+    (c) => c.stage === opp.stage
+  );
+
+  // Show current stage + completed stages checklists
+  const currentStageIdx = OPPORTUNITY_STAGES.findIndex(
+    (s) => s.id === opp.stage
+  );
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      {STAGE_CHECKLISTS.filter((cl) => {
+        const clIdx = OPPORTUNITY_STAGES.findIndex((s) => s.id === cl.stage);
+        return clIdx <= currentStageIdx;
+      }).map((cl) => {
+        const isCurrent = cl.stage === opp.stage;
+        const allDone = cl.items.every((item) => checked[`${cl.stage}_${item.key}`]);
+        const requiredDone = cl.items
+          .filter((i) => i.required)
+          .every((item) => checked[`${cl.stage}_${item.key}`]);
+
+        return (
+          <div
+            key={cl.stage}
+            className={`rounded-xl border p-4 ${
+              isCurrent
+                ? "border-indigo-500/50 bg-slate-800"
+                : allDone
+                ? "border-emerald-700/50 bg-slate-800/50"
+                : "border-slate-700 bg-slate-800/30"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-white">
+                  {stageLabelMap[cl.stage]}
+                </h3>
+                {isCurrent && (
+                  <span className="rounded bg-indigo-600 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                    CURRENT
+                  </span>
+                )}
+              </div>
+              {allDone ? (
+                <span className="text-xs text-emerald-400">&#10003; Complete</span>
+              ) : requiredDone ? (
+                <span className="text-xs text-yellow-400">Required done</span>
+              ) : (
+                <span className="text-xs text-slate-500">
+                  {cl.items.filter((i) => checked[`${cl.stage}_${i.key}`]).length}/{cl.items.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-2">
+              {cl.items.map((item) => {
+                const key = `${cl.stage}_${item.key}`;
+                const isChecked = !!checked[key];
+                return (
+                  <label
+                    key={item.key}
+                    className="flex items-start gap-2 cursor-pointer group"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleItem(key)}
+                      className="mt-0.5 h-4 w-4 rounded border-slate-600 bg-slate-900 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span
+                      className={`text-sm ${
+                        isChecked
+                          ? "text-slate-500 line-through"
+                          : "text-slate-300 group-hover:text-white"
+                      }`}
+                    >
+                      {item.label}
+                      {item.required && !isChecked && (
+                        <span className="ml-1 text-red-400 text-xs">*</span>
+                      )}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // === DETAILS TAB ===
 function DetailsTab({ opp }: { opp: Opportunity }) {
   const details = [
     { label: "Account", value: opp.account_name },
     { label: "Location", value: opp.location_name || "Not assigned" },
-    { label: "Store Type", value: opp.store_type?.replace("_", " ") || "\u2014" },
+    {
+      label: "Store Type",
+      value: opp.store_type?.replace("_", " ") || "\u2014",
+    },
     {
       label: "Contact",
       value: opp.contact_first_name
@@ -613,6 +1294,12 @@ function DetailsTab({ opp }: { opp: Opportunity }) {
           <p className="text-sm text-slate-400 whitespace-pre-wrap">
             {opp.notes}
           </p>
+        </div>
+      )}
+      {opp.lost_reason && (
+        <div className="mt-4 rounded-xl border border-red-700/50 bg-red-900/10 p-4">
+          <h3 className="text-sm font-medium text-red-300 mb-2">Lost Reason</h3>
+          <p className="text-sm text-red-400">{opp.lost_reason}</p>
         </div>
       )}
     </div>
