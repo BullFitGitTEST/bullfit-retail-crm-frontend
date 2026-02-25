@@ -94,6 +94,138 @@ export default function ReportingPage() {
         </div>
       </div>
 
+      {/* Expected PO — Next 30 Days */}
+      {data.expected_po_30d && data.expected_po_30d.opportunities.length > 0 && (
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                Expected PO Dollars &mdash; Next 30 Days
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {data.expected_po_30d.totals.count} deals closing soon &bull;{" "}
+                {data.expected_po_30d.totals.with_blockers > 0 && (
+                  <span className="text-amber-400">{data.expected_po_30d.totals.with_blockers} with blockers</span>
+                )}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold text-emerald-400">
+                ${Math.round(data.expected_po_30d.totals.total_value).toLocaleString()}
+              </p>
+              <p className="text-xs text-slate-400">
+                ${Math.round(data.expected_po_30d.totals.weighted_value).toLocaleString()} weighted
+              </p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-slate-700">
+                  <th className="pb-2 text-left text-xs text-slate-400">Account</th>
+                  <th className="pb-2 text-left text-xs text-slate-400">Opportunity</th>
+                  <th className="pb-2 text-center text-xs text-slate-400">Stage</th>
+                  <th className="pb-2 text-right text-xs text-slate-400">Close Date</th>
+                  <th className="pb-2 text-right text-xs text-slate-400">Value</th>
+                  <th className="pb-2 text-right text-xs text-slate-400">Weighted</th>
+                  <th className="pb-2 text-center text-xs text-slate-400">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-700/50">
+                {data.expected_po_30d.opportunities.map((opp) => {
+                  const blockerColors: Record<string, string> = {
+                    overdue_next_step: "bg-red-600/20 text-red-300",
+                    no_next_step: "bg-yellow-600/20 text-yellow-300",
+                    no_contact: "bg-orange-600/20 text-orange-300",
+                    no_products: "bg-purple-600/20 text-purple-300",
+                    on_track: "bg-emerald-600/20 text-emerald-300",
+                  };
+                  const blockerLabels: Record<string, string> = {
+                    overdue_next_step: "OVERDUE",
+                    no_next_step: "NO NEXT STEP",
+                    no_contact: "NO CONTACT",
+                    no_products: "NO PRODUCTS",
+                    on_track: "ON TRACK",
+                  };
+                  const weighted = (opp.estimated_value || 0) * (opp.probability || 0) / 100;
+                  return (
+                    <tr key={opp.id}>
+                      <td className="py-2 text-sm text-slate-300">{opp.account_name}</td>
+                      <td className="py-2 text-sm">
+                        <Link href={`/opportunities/${opp.id}`} className="text-indigo-400 hover:text-indigo-300">
+                          {opp.title}
+                        </Link>
+                      </td>
+                      <td className="py-2 text-center">
+                        <span className="rounded bg-slate-700 px-1.5 py-0.5 text-[10px] text-slate-300">
+                          {stageLabelMap[opp.stage] || opp.stage}
+                        </span>
+                      </td>
+                      <td className="py-2 text-sm text-slate-300 text-right">
+                        {new Date(opp.expected_close_date).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 text-sm text-white text-right font-medium">
+                        ${Math.round(opp.estimated_value || 0).toLocaleString()}
+                      </td>
+                      <td className="py-2 text-sm text-emerald-400 text-right">
+                        ${Math.round(weighted).toLocaleString()}
+                      </td>
+                      <td className="py-2 text-center">
+                        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${blockerColors[opp.blocker_type] || "bg-slate-600/20 text-slate-300"}`}>
+                          {blockerLabels[opp.blocker_type] || opp.blocker_type}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {data.expected_po_30d.totals.with_blockers > 0 && (
+            <p className="mt-3 text-xs text-amber-400 border-t border-slate-700 pt-3">
+              {data.expected_po_30d.totals.with_blockers} of {data.expected_po_30d.totals.count} deals have blockers.
+              Total at risk: ${Math.round(
+                data.expected_po_30d.opportunities
+                  .filter((o) => o.blocker_type !== "on_track")
+                  .reduce((sum, o) => sum + (o.estimated_value || 0), 0)
+              ).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Pipeline Hygiene Score */}
+      {data.pipeline_hygiene && data.pipeline_hygiene.total_active > 0 && (
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-white">Pipeline Hygiene Score</h2>
+            <span className={`text-2xl font-bold ${
+              data.pipeline_hygiene.score >= 80 ? "text-emerald-400" :
+              data.pipeline_hygiene.score >= 60 ? "text-yellow-400" : "text-red-400"
+            }`}>
+              {data.pipeline_hygiene.score}%
+            </span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            {[
+              { label: "No Next Step", count: data.pipeline_hygiene.missing_next_step, color: "text-yellow-400" },
+              { label: "No Contact", count: data.pipeline_hygiene.missing_contact, color: "text-orange-400" },
+              { label: "No Value", count: data.pipeline_hygiene.missing_value, color: "text-purple-400" },
+              { label: "No Close Date", count: data.pipeline_hygiene.missing_close_date, color: "text-blue-400" },
+              { label: "Overdue Steps", count: data.pipeline_hygiene.overdue_next_steps, color: "text-red-400" },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg border border-slate-700/50 bg-slate-800/50 px-3 py-2">
+                <p className="text-[10px] text-slate-400 uppercase">{item.label}</p>
+                <p className={`text-lg font-bold ${item.count > 0 ? item.color : "text-slate-600"}`}>
+                  {item.count}
+                  <span className="text-xs text-slate-500 font-normal"> / {data.pipeline_hygiene!.total_active}</span>
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stage Conversion Funnel */}
       <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800 p-4">
         <h2 className="text-sm font-semibold text-white mb-4">

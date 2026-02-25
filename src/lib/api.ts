@@ -617,6 +617,35 @@ export interface ReportingData {
     count: number;
     lost_value: number;
   }[];
+  expected_po_30d?: {
+    opportunities: {
+      id: string;
+      title: string;
+      stage: string;
+      probability: number;
+      estimated_value: number;
+      expected_close_date: string;
+      next_step_date?: string;
+      next_step_description?: string;
+      account_name: string;
+      blocker_type: "overdue_next_step" | "no_next_step" | "no_contact" | "no_products" | "on_track";
+    }[];
+    totals: {
+      count: number;
+      total_value: number;
+      weighted_value: number;
+      with_blockers: number;
+    };
+  };
+  pipeline_hygiene?: {
+    score: number;
+    missing_next_step: number;
+    missing_contact: number;
+    missing_value: number;
+    missing_close_date: number;
+    overdue_next_steps: number;
+    total_active: number;
+  };
 }
 
 // ---------------------------------------------------------------------------
