@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getCalls } from "@/lib/api";
 import type { Call } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 export default function CallsPage() {
   const [calls, setCalls] = useState<Call[]>([]);
@@ -36,10 +37,36 @@ export default function CallsPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Call History</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          AI-powered calls via Bland.ai
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Call History</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              AI-powered calls via Bland.ai
+            </p>
+          </div>
+          <div className="self-start sm:self-auto">
+            <HelpPanel
+              pageKey="calls"
+              tagline="A simple call log. Every call you make or receive should be logged here. A call without notes and a next step is wasted."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["A record of every call \u2014 AI-powered outbound calls via Bland.ai plus any manual calls you log. Each entry shows who you called, what was discussed, and the outcome."],
+                },
+                {
+                  title: "What to do here",
+                  content: [
+                    "Review completed calls and make sure every one has a note and a next step",
+                    "Filter by status to find calls that need follow-up",
+                    "Use call transcripts to create accurate follow-up tasks and notes",
+                    "If a call resulted in a commitment, create a task immediately \u2014 do not rely on memory",
+                    "Log manual calls too. If it is not in the system, it did not happen.",
+                  ],
+                },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Filters */}

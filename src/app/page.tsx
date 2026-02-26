@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getDashboardStats, getDashboardActions, OPPORTUNITY_STAGES } from "@/lib/api";
 import type { EnhancedDashboardStats, ActionItem } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 const stageLabelMap: Record<string, string> = {};
 for (const s of OPPORTUNITY_STAGES) {
@@ -88,10 +89,54 @@ export default function DashboardPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Sales Dashboard</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Today&apos;s priorities and pipeline overview
-        </p>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Sales Dashboard</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Today&apos;s priorities and pipeline overview
+            </p>
+          </div>
+          <HelpPanel
+            pageKey="dashboard"
+            tagline="Do not spend time admiring numbers. Use it to decide who you contact today."
+            sections={[
+              {
+                title: "What it is",
+                content: ["Your daily command center. This is where you start every morning."],
+              },
+              {
+                title: "What to do here",
+                content: [
+                  "Check Tasks Due Today and knock them out first",
+                  "Review any overdue follow ups",
+                  "Open Pipeline items that are stalled and set a next step date",
+                  "Add at least one new Prospect if your pipeline is light",
+                ],
+              },
+              {
+                title: "The standard workflow",
+                content: [
+                  "1. Add a retailer to Prospects",
+                  "2. Convert to an Account when you find a real target and contact path",
+                  "3. Create an Opportunity in Pipeline when there is a real sales motion",
+                  "4. Assign a Sequence when you need consistent outreach",
+                  "5. Log calls and notes after every interaction",
+                  "6. Create tasks for every next step",
+                  "7. Move stages only when the real world step happened",
+                  "8. Use Reports weekly to spot stalled deals and fix them",
+                ],
+              },
+              {
+                title: "Daily minimum expectations",
+                content: [
+                  "Every active opportunity has a next step date",
+                  "Every meaningful call has notes and a follow up task",
+                  "Every week you add new prospects so pipeline stays full",
+                ],
+              },
+            ]}
+          />
+        </div>
       </div>
 
       {/* Top Stats Row */}

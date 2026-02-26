@@ -7,6 +7,7 @@ import { getProspects, createProspect, deleteProspect } from "@/lib/api";
 import type { Prospect, ProspectInput } from "@/lib/api";
 import StageBadge from "@/components/shared/StageBadge";
 import ApolloSearch from "@/components/ApolloSearch";
+import HelpPanel from "@/components/HelpPanel";
 
 export default function ProspectsPage() {
   return (
@@ -56,24 +57,46 @@ function ProspectsContent() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Prospects</h1>
-          <p className="mt-1 text-sm text-slate-400">{prospects.length} total prospects</p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowApolloSearch(true)}
-            className="rounded-lg border border-indigo-500/30 bg-slate-800 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-600/10 transition"
-          >
-            Find with Apollo
-          </button>
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-          >
-            + Add Prospect
-          </button>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Prospects</h1>
+            <p className="mt-1 text-sm text-slate-400">{prospects.length} total prospects</p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <HelpPanel
+              pageKey="prospects"
+              tagline="Your target list of retailers who are not yet Accounts. If you are not adding prospects, you are starving your future pipeline."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["A list of retailers you have identified as potential targets but have not yet promoted to a full Account. Think of it as your hit list."],
+                },
+                {
+                  title: "What to do here",
+                  content: [
+                    "Add any retailer worth researching via \u201C+ Add Prospect\u201D or use Apollo to find companies by industry and size",
+                    "Research each prospect: who is the buyer, how many doors, do they carry competitors",
+                    "When a prospect is qualified and worth pursuing, promote them to an Account",
+                    "Stage prospects as: new \u2192 researching \u2192 qualified \u2192 converted or disqualified",
+                    "Do not let prospects sit in \u2018new\u2019 for more than a week. Either research them or remove them.",
+                  ],
+                },
+              ]}
+            />
+            <button
+              onClick={() => setShowApolloSearch(true)}
+              className="rounded-lg border border-indigo-500/30 bg-slate-800 px-4 py-2 text-sm font-medium text-indigo-400 hover:bg-indigo-600/10 transition"
+            >
+              Find with Apollo
+            </button>
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + Add Prospect
+            </button>
+          </div>
         </div>
       </div>
 

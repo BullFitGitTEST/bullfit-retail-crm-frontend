@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { getAccounts, createAccount, deleteAccount } from "@/lib/api";
 import type { Account, AccountInput } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -39,19 +40,41 @@ export default function AccountsPage() {
 
   return (
     <div>
-      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Accounts</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            {accounts.length} retail accounts
-          </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Accounts</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              {accounts.length} retail accounts
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <HelpPanel
+              pageKey="accounts"
+              tagline="One retailer equals one Account. Keep everything about that retailer in one place."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["A retailer or company you are pursuing or working with. One account holds all contacts, notes, and deals for that retailer."],
+                },
+                {
+                  title: "What to do here",
+                  content: [
+                    "Create an Account as soon as a retailer is real and worth pursuing",
+                    "Add all key contacts and label their role \u2014 buyer, assistant buyer, ops, DC, broker",
+                    "Log important notes and attach any documents",
+                  ],
+                },
+              ]}
+            />
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + New Account
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 self-start sm:self-auto"
-        >
-          + New Account
-        </button>
       </div>
 
       {/* Search */}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getTasks, createTask, completeTask, deleteTask } from "@/lib/api";
 import type { Task, TaskInput } from "@/lib/api";
 import PriorityBadge from "@/components/shared/PriorityBadge";
+import HelpPanel from "@/components/HelpPanel";
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -74,19 +75,43 @@ export default function TasksPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Tasks</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            {pendingCount} pending{overdueCount > 0 && `, ${overdueCount} overdue`}
-          </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Tasks</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              {pendingCount} pending{overdueCount > 0 && `, ${overdueCount} overdue`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <HelpPanel
+              pageKey="tasks"
+              tagline="Your follow-up system. No tasks means no follow-up. No follow-up means no PO."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["A centralized task list for everything you need to do: follow-up calls, send samples, submit vendor forms, check in after delivery, etc."],
+                },
+                {
+                  title: "What to do here",
+                  content: [
+                    "Create tasks whenever you commit to a next step on a call, meeting, or email",
+                    "Set a due date on every task \u2014 open-ended tasks never get done",
+                    "Check this page every morning. Complete or reschedule every overdue task before doing anything else",
+                    "Link tasks to accounts or opportunities so nothing falls through the cracks",
+                    "Use priority levels: high for revenue-blocking items, medium for active deal follow-ups, low for research and admin",
+                  ],
+                },
+              ]}
+            />
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + Add Task
+            </button>
+          </div>
         </div>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
-        >
-          + Add Task
-        </button>
       </div>
 
       {/* Filters */}

@@ -8,6 +8,7 @@ import {
   OPPORTUNITY_STAGES,
 } from "@/lib/api";
 import type { Opportunity, OpportunityPipelineView, OpportunityStage, StageGateError } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 export default function PipelinePage() {
   const [pipeline, setPipeline] = useState<OpportunityPipelineView>({});
@@ -131,22 +132,53 @@ export default function PipelinePage() {
 
   return (
     <div>
-      <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">
-            Opportunity Pipeline
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-slate-400">
-            {totalOpps} opportunities &bull; ${totalValue.toLocaleString()}{" "}
-            total &bull; ${Math.round(weightedValue).toLocaleString()} weighted
-          </p>
+      <div className="mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              Opportunity Pipeline
+            </h1>
+            <p className="mt-1 text-xs sm:text-sm text-slate-400">
+              {totalOpps} opportunities &bull; ${totalValue.toLocaleString()}{" "}
+              total &bull; ${Math.round(weightedValue).toLocaleString()} weighted
+            </p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <HelpPanel
+              pageKey="pipeline"
+              tagline="Your active deals on a Kanban board. Drag cards between stages. If an opportunity has no next step date, it is dying. Fix it immediately."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["A visual board of every opportunity organized by stage. Each column is a stage in the sales process from Targeted through Reorder Cycle."],
+                },
+                {
+                  title: "What to do here",
+                  content: [
+                    "Drag cards to the next stage when you complete a milestone",
+                    "Click any card to open the full opportunity detail",
+                    "Stage gates will block you if required fields or checklist items are missing \u2014 complete them first or force-advance with a reason",
+                    "Every card should have a next step date. No next step = dying deal",
+                    "Use the value and probability to keep your weighted pipeline accurate",
+                  ],
+                },
+                {
+                  title: "Stage definitions",
+                  content: [
+                    "Targeted \u2192 Contact Found \u2192 First Touch \u2192 Meeting Booked \u2192 Pitch Delivered \u2192 Samples Sent \u2192 Follow Up \u2192 Vendor Setup \u2192 Authorization Pending \u2192 PO Received \u2192 On Shelf \u2192 Reorder Cycle",
+                    "If a deal is stuck in the same stage for more than 2 weeks, something is wrong. Diagnose it.",
+                  ],
+                },
+              ]}
+            />
+            <Link
+              href="/accounts"
+              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+            >
+              + New from Account
+            </Link>
+          </div>
         </div>
-        <Link
-          href="/accounts"
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 self-start sm:self-auto"
-        >
-          + New from Account
-        </Link>
       </div>
 
       {/* Stage Gate Toast */}

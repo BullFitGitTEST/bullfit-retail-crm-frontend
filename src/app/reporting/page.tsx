@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getReportingData, OPPORTUNITY_STAGES } from "@/lib/api";
 import type { ReportingData } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 const stageLabelMap: Record<string, string> = {};
 for (const s of OPPORTUNITY_STAGES) {
@@ -54,10 +55,43 @@ export default function ReportingPage() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Reports &amp; Analytics</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          Pipeline performance, conversion, and forecasting
-        </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Reports &amp; Analytics</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Pipeline performance, conversion, and forecasting
+            </p>
+          </div>
+          <div className="self-start sm:self-auto">
+            <HelpPanel
+              pageKey="reports"
+              tagline="Performance and pipeline health at a glance. Reports are not for bragging. They are for diagnosing why revenue is not happening yet."
+              sections={[
+                {
+                  title: "What it is",
+                  content: ["Automated reports pulling from your pipeline data. Shows KPIs, stage conversion rates, 30-day PO forecast, pipeline hygiene, and team performance."],
+                },
+                {
+                  title: "What to look at",
+                  content: [
+                    "Expected PO Dollars (next 30 days) \u2014 this is the money. If this number is low, you need more deals or faster progression.",
+                    "Pipeline Hygiene Score \u2014 tells you how clean your data is. Missing next steps, missing contacts, and missing values all reduce this score.",
+                    "Stage conversion rates \u2014 where are deals dying? If most deals stall at Samples Sent, your follow-up game needs work.",
+                    "Blocker badges on the 30-day forecast \u2014 red (overdue), yellow (no next step), orange (no contact), purple (no products). Fix blockers to unlock revenue.",
+                  ],
+                },
+                {
+                  title: "Weekly routine",
+                  content: [
+                    "Every Monday: check the 30-day forecast and fix every blocker",
+                    "Every Friday: review Pipeline Hygiene and clean up stale or incomplete records",
+                    "If your hygiene score is below 80%, stop selling and start cleaning data",
+                  ],
+                },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* KPI Row */}

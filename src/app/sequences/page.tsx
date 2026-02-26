@@ -12,6 +12,7 @@ import {
   OPPORTUNITY_STAGES,
 } from "@/lib/api";
 import type { Sequence, Template, SequenceInput, TemplateInput } from "@/lib/api";
+import HelpPanel from "@/components/HelpPanel";
 
 const stageLabelMap: Record<string, string> = {};
 for (const s of OPPORTUNITY_STAGES) {
@@ -122,12 +123,48 @@ export default function SequencesPage() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Sequences &amp; Templates</h1>
-          <p className="mt-1 text-sm text-slate-400">
-            Automated outreach cadences and reusable message templates
-          </p>
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Sequences &amp; Templates</h1>
+            <p className="mt-1 text-sm text-slate-400">
+              Automated outreach cadences and reusable message templates
+            </p>
+          </div>
+          <div className="self-start sm:self-auto">
+            <HelpPanel
+              pageKey="sequences"
+              tagline="Do not freestyle follow-up. Use sequences so we can run the same playbook across accounts and know exactly what works."
+              sections={[
+                {
+                  title: "Sequences",
+                  content: [
+                    "A sequence is a multi-step outreach cadence: email day 1, call day 3, LinkedIn day 5, etc.",
+                    "Create sequences for common scenarios: new account outreach, post-sample follow-up, reorder check-in",
+                    "Enroll opportunities in a sequence and the system tracks which step you are on and when the next one is due",
+                    "Complete each step as you go. If you skip a step, the system will flag it.",
+                  ],
+                },
+                {
+                  title: "Templates",
+                  content: [
+                    "Templates are reusable message bodies for emails, call scripts, LinkedIn messages, and SMS",
+                    "Use {{contact_name}}, {{company_name}}, {{product_name}} variables for personalization",
+                    "Tag templates by stage so the right message appears at the right time",
+                    "Do not write emails from scratch every time. Pick a template, personalize it, send it.",
+                  ],
+                },
+                {
+                  title: "Best practice",
+                  content: [
+                    "Every new account should be enrolled in your \u201CNew Account Outreach\u201D sequence within 24 hours of creation",
+                    "Review sequence performance monthly: which cadences lead to meetings? Which get ignored?",
+                    "Update templates quarterly based on what actually converts",
+                  ],
+                },
+              ]}
+            />
+          </div>
         </div>
       </div>
 
