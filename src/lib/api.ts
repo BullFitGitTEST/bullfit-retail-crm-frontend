@@ -1630,6 +1630,158 @@ export async function getOpportunityEnrollments(
 }
 
 // ---------------------------------------------------------------------------
+// AI Orchestrator
+// ---------------------------------------------------------------------------
+
+export interface AIRecapResult {
+  status: string;
+  subject?: string;
+  email_body?: string;
+  clear_ask?: string;
+  proposed_timeline?: string;
+  tasks_to_create?: { title: string; due_date: string }[];
+  confidence_score?: number;
+  reason?: string;
+  missing_fields?: string[];
+}
+
+export interface AISampleFollowupResult {
+  status: string;
+  subject?: string;
+  email_body?: string;
+  cta?: string;
+  followup_task_date?: string;
+  risk_flags?: string[];
+  reason?: string;
+  missing_fields?: string[];
+}
+
+export interface AICallSummaryResult {
+  status: string;
+  clean_summary?: string;
+  next_steps?: { action: string; owner: string; due_date: string }[];
+  stage_change_recommendation?: string | null;
+  key_objections?: string[];
+  buyer_sentiment?: string;
+}
+
+export interface AINextStepResult {
+  status: string;
+  recommended_action?: string;
+  why?: string;
+  urgency?: string;
+  email_draft?: string | null;
+  task?: { title: string; due_date: string };
+  blockers?: string[];
+  stage_advice?: string;
+  reason?: string;
+  missing_fields?: string[];
+}
+
+export interface AIWeeklySummaryResult {
+  status: string;
+  summary_date?: string;
+  wins_this_week?: string;
+  stalled_deals?: string;
+  risk_deals?: string;
+  expected_po_30_days?: string;
+  rep_performance?: {
+    rep_name: string;
+    deals: number;
+    pipeline_value: number;
+    stalled_count: number;
+    overdue_count: number;
+    assessment: string;
+  }[];
+  recommended_focus?: string;
+}
+
+export interface AIUsageStats {
+  period: string;
+  totals: {
+    total_calls: number;
+    successful: number;
+    blocked: number;
+    errors: number;
+    total_tokens: number;
+  };
+  by_feature: { feature: string; calls: number; successful: number }[];
+  by_rep: { full_name: string; calls: number; successful: number }[];
+  recent: { feature: string; status: string; model_used: string; created_at: string; rep_name: string }[];
+}
+
+export async function aiPostMeetingRecap(
+  opportunityId: string,
+  meetingNotes: string,
+  teamMemberId?: string
+): Promise<AIRecapResult> {
+  return request<AIRecapResult>("/api/ai/opportunity/post-meeting-recap", {
+    method: "POST",
+    body: JSON.stringify({
+      opportunity_id: opportunityId,
+      meeting_notes: meetingNotes,
+      team_member_id: teamMemberId,
+    }),
+  });
+}
+
+export async function aiSampleFollowup(
+  opportunityId: string,
+  teamMemberId?: string,
+  daysSinceSamples?: number
+): Promise<AISampleFollowupResult> {
+  return request<AISampleFollowupResult>("/api/ai/opportunity/sample-followup", {
+    method: "POST",
+    body: JSON.stringify({
+      opportunity_id: opportunityId,
+      team_member_id: teamMemberId,
+      days_since_samples: daysSinceSamples,
+    }),
+  });
+}
+
+export async function aiCallSummary(
+  rawCallNotes: string,
+  opportunityId?: string,
+  teamMemberId?: string
+): Promise<AICallSummaryResult> {
+  return request<AICallSummaryResult>("/api/ai/call/summarize-and-extract", {
+    method: "POST",
+    body: JSON.stringify({
+      raw_call_notes: rawCallNotes,
+      opportunity_id: opportunityId,
+      team_member_id: teamMemberId,
+    }),
+  });
+}
+
+export async function aiNextStep(
+  opportunityId: string,
+  teamMemberId?: string
+): Promise<AINextStepResult> {
+  return request<AINextStepResult>("/api/ai/opportunity/next-step", {
+    method: "POST",
+    body: JSON.stringify({
+      opportunity_id: opportunityId,
+      team_member_id: teamMemberId,
+    }),
+  });
+}
+
+export async function aiWeeklySummary(
+  teamMemberId?: string
+): Promise<AIWeeklySummaryResult> {
+  return request<AIWeeklySummaryResult>("/api/ai/report/weekly-summary", {
+    method: "POST",
+    body: JSON.stringify({ team_member_id: teamMemberId }),
+  });
+}
+
+export async function getAIUsageStats(): Promise<AIUsageStats> {
+  return request<AIUsageStats>("/api/ai/usage");
+}
+
+// ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 

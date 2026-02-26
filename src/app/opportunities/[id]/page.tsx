@@ -30,13 +30,14 @@ import type {
   ChecklistItem,
   Document,
 } from "@/lib/api";
+import AIAssistPanel from "@/components/AIAssistPanel";
 
 const stageLabelMap: Record<string, string> = {};
 for (const s of OPPORTUNITY_STAGES) {
   stageLabelMap[s.id] = s.label;
 }
 
-type TabId = "activity" | "products" | "documents" | "checklist" | "details" | "edit";
+type TabId = "activity" | "products" | "documents" | "checklist" | "details" | "edit" | "ai";
 
 export default function OpportunityDetailPage() {
   const { id } = useParams();
@@ -304,6 +305,7 @@ export default function OpportunityDetailPage() {
                 label: `Documents (${opp.documents?.length || 0})`,
               },
               { id: "checklist" as const, label: "Checklist" },
+              { id: "ai" as const, label: "\u{1F916} AI Assist" },
               { id: "details" as const, label: "Details" },
               { id: "edit" as const, label: "Edit" },
             ] as const
@@ -334,6 +336,7 @@ export default function OpportunityDetailPage() {
         <DocumentsTab opp={opp} onRefresh={fetchOpp} />
       )}
       {activeTab === "checklist" && <ChecklistTab opp={opp} onRefresh={fetchOpp} />}
+      {activeTab === "ai" && <AIAssistPanel opp={opp} />}
       {activeTab === "details" && <DetailsTab opp={opp} />}
       {activeTab === "edit" && <EditTab opp={opp} onSaved={fetchOpp} />}
 

@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { getReportingData, OPPORTUNITY_STAGES } from "@/lib/api";
-import type { ReportingData } from "@/lib/api";
+import { getReportingData, OPPORTUNITY_STAGES, aiWeeklySummary } from "@/lib/api";
+import type { ReportingData, AIWeeklySummaryResult } from "@/lib/api";
 import HelpPanel from "@/components/HelpPanel";
 
 const stageLabelMap: Record<string, string> = {};
@@ -17,6 +17,8 @@ export default function ReportingPage() {
   const [data, setData] = useState<ReportingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [weeklyLoading, setWeeklyLoading] = useState(false);
+  const [weeklySummary, setWeeklySummary] = useState<AIWeeklySummaryResult | null>(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -594,6 +596,104 @@ export default function ReportingPage() {
           </div>
         </div>
       )}
+
+      {/* AI Weekly Executive Summary */}
+      <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-slate-800 to-slate-900 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">{"\u{1F916}"}</span>
+            <h2 className="text-sm font-semibold text-white">AI Weekly Executive Summary</h2>
+          </div>
+          <button
+            onClick={async () => {
+              setWeeklyLoading(true);
+              try {
+                const result = await aiWeeklySummary();
+                setWeeklySummary(result);
+              } catch (err) {
+                console.error("Weekly summary failed", err);
+              } finally {
+                setWeeklyLoading(false);
+              }
+            }}
+            disabled={weeklyLoading}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-medium text-white hover:bg-indigo-500 disabled:opacity-50"
+          >
+            {weeklyLoading ? "Generating..." : weeklySummary ? "Regenerate" : "Generate Summary"}
+          </button>
+        </div>
+
+        {!weeklySummary && !weeklyLoading && (
+          <p className="text-sm text-slate-400">
+            Click &quot;Generate Summary&quot; to get an AI-powered weekly pipeline briefing with wins, risks, stalled deals, and per-rep assessments.
+          </p>
+        )}
+
+        {weeklyLoading && (
+          <div className="flex items-center gap-2 py-4">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+            <span className="text-sm text-slate-400">Analyzing pipeline data...</span>
+          </div>
+        )}
+
+        {weeklySummary && weeklySummary.status === "ok" && (
+          <div className="space-y-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-green-700/30 bg-green-900/10 p-3">
+                <p className="text-xs text-green-400 uppercase tracking-wider mb-1">Wins This Week</p>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{weeklySummary.wins_this_week}</p>
+              </div>
+              <div className="rounded-lg border border-red-700/30 bg-red-900/10 p-3">
+                <p className="text-xs text-red-400 uppercase tracking-wider mb-1">At Risk</p>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{weeklySummary.risk_deals}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-amber-700/30 bg-amber-900/10 p-3">
+                <p className="text-xs text-amber-400 uppercase tracking-wider mb-1">Stalled Deals</p>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{weeklySummary.stalled_deals}</p>
+              </div>
+              <div className="rounded-lg border border-emerald-700/30 bg-emerald-900/10 p-3">
+                <p className="text-xs text-emerald-400 uppercase tracking-wider mb-1">Expected PO (30 Days)</p>
+                <p className="text-sm text-slate-300 whitespace-pre-wrap">{weeklySummary.expected_po_30_days}</p>
+              </div>
+            </div>
+
+            {weeklySummary.rep_performance && weeklySummary.rep_performance.length > 0 && (
+              <div className="rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                <p className="text-xs text-slate-500 uppercase tracking-wider mb-2">Rep Performance</p>
+                <div className="space-y-2">
+                  {weeklySummary.rep_performance.map((rep, i) => (
+                    <div key={i} className="flex items-start gap-3 py-2 border-b border-slate-700/50 last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-white">{rep.rep_name}</span>
+                          <span className="text-xs text-slate-500">{rep.deals} deals &bull; ${Math.round(rep.pipeline_value).toLocaleString()}</span>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-0.5">{rep.assessment}</p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        {rep.stalled_count > 0 && (
+                          <span className="rounded bg-amber-800/40 px-1.5 py-0.5 text-[10px] text-amber-300">{rep.stalled_count} stalled</span>
+                        )}
+                        {rep.overdue_count > 0 && (
+                          <span className="rounded bg-red-800/40 px-1.5 py-0.5 text-[10px] text-red-300">{rep.overdue_count} overdue</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg border border-indigo-500/30 bg-indigo-900/10 p-3">
+              <p className="text-xs text-indigo-400 uppercase tracking-wider mb-1">Recommended Focus This Week</p>
+              <p className="text-sm text-slate-300 whitespace-pre-wrap">{weeklySummary.recommended_focus}</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
