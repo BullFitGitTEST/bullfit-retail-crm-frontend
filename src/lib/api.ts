@@ -1782,6 +1782,46 @@ export async function getAIUsageStats(): Promise<AIUsageStats> {
 }
 
 // ---------------------------------------------------------------------------
+// CSV Import AI Helpers (graceful fallback — endpoints may not exist yet)
+// ---------------------------------------------------------------------------
+
+export interface AIColumnMapResult {
+  suggested_mapping: Record<string, string>;
+}
+
+export interface AIClassifyRequest {
+  businesses: { index: number; name: string; city?: string; state?: string }[];
+}
+
+export interface AIClassifyResult {
+  classifications: {
+    index: number;
+    store_type: string;
+    fit_score: number;
+    reasoning?: string;
+  }[];
+}
+
+export async function aiAutoMapColumns(
+  csvHeaders: string[],
+  sampleRows: string[][]
+): Promise<AIColumnMapResult> {
+  return request<AIColumnMapResult>("/api/ai/csv/auto-map", {
+    method: "POST",
+    body: JSON.stringify({ csv_headers: csvHeaders, sample_rows: sampleRows }),
+  });
+}
+
+export async function aiClassifyBusinesses(
+  data: AIClassifyRequest
+): Promise<AIClassifyResult> {
+  return request<AIClassifyResult>("/api/ai/csv/classify", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 
