@@ -5,12 +5,14 @@ import Link from "next/link";
 import { getAccounts, createAccount, deleteAccount } from "@/lib/api";
 import type { Account, AccountInput } from "@/lib/api";
 import HelpPanel from "@/components/HelpPanel";
+import AccountCSVImportWizard from "@/components/accounts/AccountCSVImportWizard";
 
 export default function AccountsPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportWizard, setShowImportWizard] = useState(false);
 
   const fetchAccounts = useCallback(async () => {
     try {
@@ -67,6 +69,12 @@ export default function AccountsPage() {
                 },
               ]}
             />
+            <button
+              onClick={() => setShowImportWizard(true)}
+              className="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
+            >
+              Import CSV
+            </button>
             <button
               onClick={() => setShowAddModal(true)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
@@ -253,6 +261,17 @@ export default function AccountsPage() {
           onAdded={(a) => {
             setAccounts((prev) => [a, ...prev]);
             setShowAddModal(false);
+          }}
+        />
+      )}
+
+      {/* Import CSV Wizard */}
+      {showImportWizard && (
+        <AccountCSVImportWizard
+          onClose={() => setShowImportWizard(false)}
+          onImported={(imported) => {
+            setAccounts((prev) => [...imported, ...prev]);
+            setShowImportWizard(false);
           }}
         />
       )}

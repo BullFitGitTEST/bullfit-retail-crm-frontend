@@ -1,6 +1,6 @@
 import Papa from "papaparse";
-import type { ProspectInput, Prospect } from "./api";
-import { US_STATE_MAP, COLUMN_ALIASES } from "./csv-constants";
+import type { ProspectInput, Prospect, Account, AccountInput } from "./api";
+import { US_STATE_MAP, COLUMN_ALIASES, ACCOUNT_COLUMN_ALIASES } from "./csv-constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -340,6 +340,184 @@ export function findDuplicates(
           matchType: "email",
           existingProspect: match,
         });
+      }
+    }
+  });
+
+  return results;
+}
+
+// ---------------------------------------------------------------------------
+// Account Import Helpers
+// ---------------------------------------------------------------------------
+
+export interface AccountDedupResult {
+  rowIndex: number;
+  csvRow: Partial<AccountInput>;
+  matchType: "website" | "name";
+  existingAccount: Account;
+}
+
+export function autoMapAccountColumns(
+  csvHeaders: string[]
+): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  const usedFields = new Set<string>();
+
+  const normalized = csvHeaders.map((h) =>
+    h.toLowerCase().trim().replace(/[_\-]/g, " ")
+  );
+
+  // Pass 1: exact alias match
+  for (let i = 0; i < normalized.length; i++) {
+    const norm = normalized[i];
+    for (const [field, aliases] of Object.entries(ACCOUNT_COLUMN_ALIASES)) {
+      if (usedFields.has(field)) continue;
+      if (aliases.includes(norm)) {
+        mapping[csvHeaders[i]] = field;
+        usedFields.add(field);
+        break;
+      }
+    }
+  }
+
+  // Pass 2: substring match for remaining
+  for (let i = 0; i < normalized.length; i++) {
+    if (mapping[csvHeaders[i]]) continue;
+    const norm = normalized[i];
+    for (const [field, aliases] of Object.entries(ACCOUNT_COLUMN_ALIASES)) {
+      if (usedFields.has(field)) continue;
+      const match = aliases.some(
+        (alias) => norm.includes(alias) || alias.includes(norm)
+      );
+      if (match) {
+        mapping[csvHeaders[i]] = field;
+        usedFields.add(field);
+        break;
+      }
+    }
+  }
+
+  return mapping;
+}
+
+export function validateAccountMapping(
+  mapping: Record<string, string>
+): { valid: boolean; missing: string[] } {
+  const mapped = new Set(Object.values(mapping));
+  const missing: string[] = [];
+  if (!mapped.has("name")) missing.push("Account Name");
+  return { valid: missing.length === 0, missing };
+}
+
+const VALID_INDUSTRIES = new Set([
+  "supplement",
+  "pharmacy",
+  "health_food",
+  "fitness",
+  "grocery",
+  "ecommerce",
+  "distributor",
+  "other",
+]);
+
+function normalizeIndustry(raw: string): string {
+  const lower = raw.toLowerCase().trim().replace(/[\s_-]+/g, "_");
+  if (VALID_INDUSTRIES.has(lower)) return lower;
+  if (/supplement|vitamin|nutrition|nutr/.test(lower)) return "supplement";
+  if (/pharmacy|pharm|drug|rx/.test(lower)) return "pharmacy";
+  if (/health.?food|natural|organic/.test(lower)) return "health_food";
+  if (/gym|fitness|athletic|training/.test(lower)) return "fitness";
+  if (/grocery|market|supermarket/.test(lower)) return "grocery";
+  if (/ecommerce|e.commerce|online/.test(lower)) return "ecommerce";
+  if (/distributor|distribution|wholesale/.test(lower)) return "distributor";
+  return "other";
+}
+
+export function normalizeAccountRows(
+  rawRows: string[][],
+  headers: string[],
+  columnMap: Record<string, string>
+): Partial<AccountInput>[] {
+  return rawRows.map((row) => {
+    const account: Record<string, unknown> = {};
+
+    headers.forEach((header, idx) => {
+      const field = columnMap[header];
+      if (!field) return;
+      const value = (row[idx] ?? "").trim();
+      if (!value) return;
+
+      if (field === "annual_revenue") {
+        const num = parseFloat(value.replace(/[$,]/g, ""));
+        if (!isNaN(num)) account.annual_revenue = num;
+      } else if (field === "employee_count") {
+        const num = parseInt(value.replace(/,/g, ""), 10);
+        if (!isNaN(num)) account.employee_count = num;
+      } else if (field === "industry") {
+        account.industry = normalizeIndustry(value);
+      } else if (field === "website") {
+        // Ensure website has protocol
+        let url = value;
+        if (url && !/^https?:\/\//i.test(url)) url = `https://${url}`;
+        account.website = url;
+      } else {
+        account[field] = value;
+      }
+    });
+
+    return account as Partial<AccountInput>;
+  });
+}
+
+function normalizeAccountURL(url: string): string {
+  return url
+    .toLowerCase()
+    .replace(/^https?:\/\//, "")
+    .replace(/^www\./, "")
+    .replace(/\/+$/, "");
+}
+
+export function findAccountDuplicates(
+  normalizedRows: Partial<AccountInput>[],
+  existingAccounts: Account[]
+): AccountDedupResult[] {
+  const byWebsite = new Map<string, Account>();
+  const byName = new Map<string, Account>();
+
+  for (const a of existingAccounts) {
+    if (a.website) byWebsite.set(normalizeAccountURL(a.website), a);
+    if (a.name) byName.set(a.name.toLowerCase().trim(), a);
+  }
+
+  const results: AccountDedupResult[] = [];
+
+  normalizedRows.forEach((row, idx) => {
+    // Website match (strongest signal)
+    if (row.website) {
+      const match = byWebsite.get(normalizeAccountURL(row.website));
+      if (match) {
+        results.push({
+          rowIndex: idx,
+          csvRow: row,
+          matchType: "website",
+          existingAccount: match,
+        });
+        return;
+      }
+    }
+
+    // Name match
+    if (row.name) {
+      const match = byName.get(row.name.toLowerCase().trim());
+      if (match) {
+        results.push({
+          rowIndex: idx,
+          csvRow: row,
+          matchType: "name",
+          existingAccount: match,
+        });
+        return;
       }
     }
   });

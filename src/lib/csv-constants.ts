@@ -242,3 +242,93 @@ export const MAPPABLE_FIELDS: {
   { key: "estimated_monthly_volume", label: "Est. Monthly Volume", required: false },
   { key: "notes", label: "Notes", required: false },
 ];
+
+// ---------------------------------------------------------------------------
+// Account Column Aliases
+// ---------------------------------------------------------------------------
+
+export const ACCOUNT_COLUMN_ALIASES: Record<string, string[]> = {
+  name: [
+    "account name",
+    "account",
+    "company",
+    "company name",
+    "business name",
+    "business",
+    "name",
+    "retailer",
+    "organization",
+    "org",
+    "dba",
+    "doing business as",
+    "firm",
+    "store name",
+    "shop name",
+  ],
+  website: [
+    "website",
+    "url",
+    "web",
+    "site",
+    "homepage",
+    "domain",
+    "web address",
+    "website url",
+  ],
+  industry: [
+    "industry",
+    "category",
+    "vertical",
+    "segment",
+    "business type",
+    "type",
+    "sector",
+    "store type",
+  ],
+  annual_revenue: [
+    "annual revenue",
+    "revenue",
+    "yearly revenue",
+    "annual sales",
+    "annual income",
+    "yearly sales",
+    "total revenue",
+  ],
+  employee_count: [
+    "employee count",
+    "employees",
+    "headcount",
+    "staff",
+    "team size",
+    "number of employees",
+    "num employees",
+    "size",
+    "company size",
+  ],
+  notes: [
+    "notes",
+    "comments",
+    "description",
+    "memo",
+    "remarks",
+    "note",
+    "details",
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// Account Mappable Fields
+// ---------------------------------------------------------------------------
+
+export const ACCOUNT_MAPPABLE_FIELDS: {
+  key: string;
+  label: string;
+  required: boolean;
+}[] = [
+  { key: "name", label: "Account Name", required: true },
+  { key: "website", label: "Website", required: false },
+  { key: "industry", label: "Industry", required: false },
+  { key: "annual_revenue", label: "Annual Revenue", required: false },
+  { key: "employee_count", label: "Employee Count", required: false },
+  { key: "notes", label: "Notes", required: false },
+];
