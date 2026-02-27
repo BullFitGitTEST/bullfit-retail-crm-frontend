@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { deterministicExtract } from "@/lib/competitor-intel/extraction";
 import { aiExtract, getPromptVersion } from "@/lib/competitor-intel/ai-service";
 

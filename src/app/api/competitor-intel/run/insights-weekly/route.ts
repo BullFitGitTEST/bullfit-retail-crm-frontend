@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { aiGenerateInsights, getPromptVersion } from "@/lib/competitor-intel/ai-service";
 import { checkInsightCompliance } from "@/lib/competitor-intel/compliance";
 import type { ExtractedData, DiffResult } from "@/lib/competitor-intel/types";

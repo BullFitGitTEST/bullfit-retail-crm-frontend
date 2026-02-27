@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { computeDiff } from "@/lib/competitor-intel/diff";
 import type { ExtractedData } from "@/lib/competitor-intel/types";
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin as supabase } from "@/lib/supabase";
 import { stripHtml, computeContentHash } from "@/lib/competitor-intel/extraction";
 
 const FETCH_TIMEOUT_MS = 30_000;
