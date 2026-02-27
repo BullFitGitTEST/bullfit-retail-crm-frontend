@@ -113,7 +113,7 @@ export default function ReportingPage() {
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
           <p className="text-xs text-slate-400 uppercase">Forecast (Weighted)</p>
           <p className="mt-1 text-2xl font-bold text-emerald-400">
-            ${Math.round(data.forecast.totals.weighted_value).toLocaleString()}
+            ${Math.round(Number(data.forecast.totals.weighted_value) || 0).toLocaleString()}
           </p>
         </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
@@ -147,10 +147,10 @@ export default function ReportingPage() {
             </div>
             <div className="text-right">
               <p className="text-xl font-bold text-emerald-400">
-                ${Math.round(data.expected_po_30d.totals.total_value).toLocaleString()}
+                ${Math.round(data.expected_po_30d.opportunities.reduce((s, o) => s + (Number(o.estimated_value) || 0), 0)).toLocaleString()}
               </p>
               <p className="text-xs text-slate-400">
-                ${Math.round(data.expected_po_30d.totals.weighted_value).toLocaleString()} weighted
+                ${Math.round(Number(data.expected_po_30d.totals.weighted_value) || 0).toLocaleString()} weighted
               </p>
             </div>
           </div>
@@ -345,10 +345,10 @@ export default function ReportingPage() {
                       {s.count}
                     </td>
                     <td className="py-2 text-sm text-slate-300 text-right">
-                      ${Math.round(s.total_value).toLocaleString()}
+                      ${Math.round(Number(s.total_value) || 0).toLocaleString()}
                     </td>
                     <td className="py-2 text-sm text-emerald-400 text-right font-medium">
-                      ${Math.round(s.weighted_value).toLocaleString()}
+                      ${Math.round(Number(s.weighted_value) || 0).toLocaleString()}
                     </td>
                   </tr>
                 ))}
@@ -362,10 +362,10 @@ export default function ReportingPage() {
                     {data.forecast.totals.count}
                   </td>
                   <td className="pt-2 text-sm font-semibold text-white text-right">
-                    ${Math.round(data.forecast.totals.total_value).toLocaleString()}
+                    ${Math.round(Number(data.forecast.totals.total_value) || 0).toLocaleString()}
                   </td>
                   <td className="pt-2 text-sm font-bold text-emerald-400 text-right">
-                    ${Math.round(data.forecast.totals.weighted_value).toLocaleString()}
+                    ${Math.round(Number(data.forecast.totals.weighted_value) || 0).toLocaleString()}
                   </td>
                 </tr>
               </tfoot>
