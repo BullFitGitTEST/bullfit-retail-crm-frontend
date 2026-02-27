@@ -141,14 +141,14 @@ function PipelineContent() {
   );
   const totalValue = Object.values(pipeline).reduce(
     (sum, opps) =>
-      sum + opps.reduce((s, o) => s + (o.estimated_value || 0), 0),
+      sum + opps.reduce((s, o) => s + (Number(o.estimated_value) || 0), 0),
     0
   );
   const weightedValue = Object.values(pipeline).reduce(
     (sum, opps) =>
       sum +
       opps.reduce(
-        (s, o) => s + ((o.estimated_value || 0) * (o.probability || 0)) / 100,
+        (s, o) => s + ((Number(o.estimated_value) || 0) * (Number(o.probability) || 0)) / 100,
         0
       ),
     0
@@ -277,7 +277,7 @@ function PipelineContent() {
             const allStageOpps = pipeline[stage.id] || [];
             const stageOpps = allStageOpps.filter(shouldShow);
             const stageValue = stageOpps.reduce(
-              (sum, o) => sum + (o.estimated_value || 0),
+              (sum, o) => sum + (Number(o.estimated_value) || 0),
               0
             );
 
@@ -351,7 +351,7 @@ function PipelineContent() {
                           <div className="mt-1.5 flex items-center justify-between text-[10px]">
                             {opp.estimated_value ? (
                               <span className="text-emerald-400 font-medium">
-                                ${opp.estimated_value.toLocaleString()}
+                                ${Number(opp.estimated_value).toLocaleString()}
                               </span>
                             ) : (
                               <span className="text-slate-500">No value</span>

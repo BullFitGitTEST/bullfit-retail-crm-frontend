@@ -183,7 +183,7 @@ export default function ReportingPage() {
                     no_products: "NO PRODUCTS",
                     on_track: "ON TRACK",
                   };
-                  const weighted = (opp.estimated_value || 0) * (opp.probability || 0) / 100;
+                  const weighted = (Number(opp.estimated_value) || 0) * (Number(opp.probability) || 0) / 100;
                   return (
                     <tr key={opp.id}>
                       <td className="py-2 text-sm text-slate-300">{opp.account_name}</td>
@@ -201,7 +201,7 @@ export default function ReportingPage() {
                         {new Date(opp.expected_close_date).toLocaleDateString()}
                       </td>
                       <td className="py-2 text-sm text-white text-right font-medium">
-                        ${Math.round(opp.estimated_value || 0).toLocaleString()}
+                        ${Math.round(Number(opp.estimated_value) || 0).toLocaleString()}
                       </td>
                       <td className="py-2 text-sm text-emerald-400 text-right">
                         ${Math.round(weighted).toLocaleString()}
@@ -223,7 +223,7 @@ export default function ReportingPage() {
               Total at risk: ${Math.round(
                 data.expected_po_30d.opportunities
                   .filter((o) => o.blocker_type !== "on_track")
-                  .reduce((sum, o) => sum + (o.estimated_value || 0), 0)
+                  .reduce((sum, o) => sum + (Number(o.estimated_value) || 0), 0)
               ).toLocaleString()}
             </p>
           )}

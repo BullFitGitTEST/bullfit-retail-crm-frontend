@@ -241,7 +241,7 @@ export default function DashboardPage() {
                     <div className="text-right flex-shrink-0">
                       {action.estimated_value ? (
                         <p className="text-sm font-medium text-emerald-400">
-                          ${Math.round(action.estimated_value).toLocaleString()}
+                          ${Math.round(Number(action.estimated_value)).toLocaleString()}
                         </p>
                       ) : (
                         <p className="text-xs text-slate-600">No value</p>

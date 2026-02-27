@@ -157,7 +157,7 @@ export default function AccountDetailPage() {
             {(
               account.opportunities
                 ?.filter((o) => o.stage !== "closed_lost")
-                .reduce((sum, o) => sum + (o.estimated_value || 0), 0) || 0
+                .reduce((sum, o) => sum + (Number(o.estimated_value) || 0), 0) || 0
             ).toLocaleString()}
           </p>
         </div>
@@ -246,7 +246,7 @@ function OverviewTab({ account }: { account: Account }) {
                 </div>
                 {o.estimated_value && (
                   <span className="text-sm font-medium text-emerald-400">
-                    ${o.estimated_value.toLocaleString()}
+                    ${Number(o.estimated_value).toLocaleString()}
                   </span>
                 )}
               </Link>
@@ -1008,7 +1008,7 @@ function OpportunitiesTab({
               <div className="text-right">
                 {o.estimated_value && (
                   <p className="text-sm font-medium text-emerald-400">
-                    ${o.estimated_value.toLocaleString()}
+                    ${Number(o.estimated_value).toLocaleString()}
                   </p>
                 )}
                 {o.next_step_date && (

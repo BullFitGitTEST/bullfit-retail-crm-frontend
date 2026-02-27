@@ -238,11 +238,11 @@ export default function OpportunityDetailPage() {
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-4">
           <p className="text-xs text-slate-400 uppercase mb-1">Est. Value</p>
           <p className="text-lg font-bold text-emerald-400">
-            ${(opp.estimated_value || 0).toLocaleString()}
+            ${(Number(opp.estimated_value) || 0).toLocaleString()}
           </p>
           {opp.estimated_monthly_volume ? (
             <p className="text-xs text-slate-500">
-              ${opp.estimated_monthly_volume.toLocaleString()}/mo
+              ${Number(opp.estimated_monthly_volume).toLocaleString()}/mo
             </p>
           ) : null}
         </div>
