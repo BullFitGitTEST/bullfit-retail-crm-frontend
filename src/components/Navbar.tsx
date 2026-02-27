@@ -14,6 +14,7 @@ const links = [
   { href: "/reporting", label: "Reports" },
   { href: "/sequences", label: "Sequences" },
   { href: "/growth-ops", label: "Playbook" },
+  { href: "/competitor-intel", label: "Intel" },
 ];
 
 export default function Navbar() {
