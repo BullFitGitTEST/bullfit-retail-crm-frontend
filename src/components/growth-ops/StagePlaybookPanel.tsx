@@ -16,6 +16,7 @@ import {
   futureDateISO,
 } from "@/lib/growth-ops-engine";
 import { STAGE_GUIDES } from "@/lib/growth-ops-data";
+import HelpPanel from "@/components/HelpPanel";
 
 interface Props {
   opp: Opportunity;
@@ -115,6 +116,48 @@ export default function StagePlaybookPanel({ opp, onRefresh }: Props) {
 
   return (
     <div className="space-y-5">
+      {/* Help */}
+      <div className="flex justify-end">
+        <HelpPanel
+          pageKey="opp-playbook"
+          tagline="Stage-specific guidance for this deal. Apply the playbook, generate emails, and set your next step — all from here."
+          sections={[
+            {
+              title: "What this tab does",
+              content: [
+                "Shows the Growth Ops playbook for this deal\u2019s current stage with specific actions to take",
+                "The \u201cDo This\u201d checklist shows exactly what tasks to complete before moving to the next stage",
+                "Click \u201cApply Playbook\u201d to create all the tasks in your task list automatically",
+              ],
+            },
+            {
+              title: "AI Email Draft",
+              content: [
+                "Click \u201cGenerate Email Draft with AI\u201d to get a context-aware email based on this opportunity\u2019s stage, account, and activity history",
+                "Copy the draft to your clipboard and paste it into your email client",
+                "If the AI says it needs more info, fill in the missing fields on the Edit tab first",
+              ],
+            },
+            {
+              title: "Set Next Step",
+              content: [
+                "Every deal must have a next step with a date \u2014 deals without one show a warning",
+                "Use the date picker and description field to set when and what your next action is",
+                "The next step updates on the opportunity detail and shows up on your dashboard",
+              ],
+            },
+            {
+              title: "Enforcement Warnings",
+              content: [
+                "Amber warnings at the top tell you what\u2019s missing before you can advance this deal",
+                "Common warnings: no contact assigned, no next step date, no estimated value set",
+                "Fix these before trying to move the deal to the next pipeline stage",
+              ],
+            },
+          ]}
+        />
+      </div>
+
       {/* Enforcement Warnings */}
       {warnings.length > 0 && (
         <div className="rounded-lg border border-amber-700/30 bg-amber-900/10 p-4">

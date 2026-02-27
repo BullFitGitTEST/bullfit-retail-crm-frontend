@@ -55,6 +55,7 @@ import {
 } from "@/lib/growth-ops-data";
 import type { DailyBlock, StageGuide } from "@/lib/growth-ops-data";
 import StalledDealWizard from "@/components/growth-ops/StalledDealWizard";
+import HelpPanel from "@/components/HelpPanel";
 
 // ---------------------------------------------------------------------------
 // Tab system
@@ -154,9 +155,41 @@ function ExecuteTab() {
     <div className="space-y-6">
       {/* Daily Rhythm Run Blocks */}
       <div>
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
-          Daily Operating Rhythm
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+            Daily Operating Rhythm
+          </h2>
+          <HelpPanel
+            pageKey="growth-ops-execute"
+            tagline="Three blocks a day. Every day. No exceptions. Run them in order and your pipeline stays clean."
+            sections={[
+              {
+                title: "What Run Blocks do",
+                content: [
+                  "Each block creates tasks in your task list so nothing gets forgotten",
+                  "After running a block, deep links appear to take you directly to the relevant CRM pages (Tasks, Pipeline, Calls)",
+                  "Blocks reset every day \u2014 green checkmark means you already ran it today",
+                ],
+              },
+              {
+                title: "The daily rhythm",
+                content: [
+                  "Morning Block \u2014 Clear overdue tasks, review pipeline, set today\u2019s priorities",
+                  "Midday Block \u2014 Make calls, send follow-ups, check for stalled deals",
+                  "EOD Block \u2014 Log all activities, update next steps, plan tomorrow",
+                ],
+              },
+              {
+                title: "Stalled Deals",
+                content: [
+                  "Any deal with no activity for 14+ days shows up in the Stalled Deals section below",
+                  "Click \u201cOpen Stalled Deal Wizard\u201d to walk through a 7-step fix: verify contacts, review history, schedule a call, loop in assistant buyer, generate AI email, offer samples, or mark cold",
+                  "The wizard logs every action as an activity on the opportunity so your timeline stays complete",
+                ],
+              },
+            ]}
+          />
+        </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {RUN_BLOCKS.map((block) => {
             const c = BLOCK_COLORS[block.color];
@@ -564,9 +597,41 @@ function MetricsTab() {
     <div className="space-y-6">
       {/* Metric Cards */}
       <div>
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
-          Weekly Growth Ops Metrics
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+            Weekly Growth Ops Metrics
+          </h2>
+          <HelpPanel
+            pageKey="growth-ops-metrics"
+            tagline="What gets measured gets managed. These 9 metrics tell you if your pipeline is healthy or dying."
+            sections={[
+              {
+                title: "What the metrics show",
+                content: [
+                  "Live data pulled from your CRM pipeline \u2014 meetings booked, pitches delivered, samples sent, vendor setups, authorizations, first POs, and reorders",
+                  "Two warning metrics: deals stalled 14+ days and deals missing a next step \u2014 these show up in amber when they\u2019re above zero",
+                  "All numbers update in real time every time you open this tab",
+                ],
+              },
+              {
+                title: "AI Weekly Summary",
+                content: [
+                  "Click \u201cGenerate Summary\u201d to get an AI-powered executive brief covering wins, stalled deals, at-risk deals, and recommended focus areas",
+                  "Includes rep-by-rep performance breakdown with deal counts, stalled counts, and overdue counts",
+                  "Use this in your weekly team meeting to drive accountability",
+                ],
+              },
+              {
+                title: "What to watch for",
+                content: [
+                  "Meetings Booked should stay above 5/week per rep",
+                  "Stalled 14+ Days should always be zero \u2014 if it\u2019s not, run the Stalled Deal Wizard on the Execute tab",
+                  "Missing Next Step means a deal is dying \u2014 every opportunity must have a dated next step",
+                ],
+              },
+            ]}
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {WEEKLY_METRICS_CONFIG.map((m) => {
             const value = getMetricValue(m.key);
@@ -791,9 +856,42 @@ function TemplatesTab() {
     <div className="space-y-6">
       {/* Outreach Cadence */}
       <div>
-        <h2 className="text-sm font-semibold text-white uppercase tracking-wider mb-3">
-          Buyer Intro 10-Day Cadence
-        </h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+            Buyer Intro 10-Day Cadence
+          </h2>
+          <HelpPanel
+            pageKey="growth-ops-templates"
+            tagline="Pre-built email templates and a 4-touch outreach sequence. Seed them once, use them on every deal."
+            sections={[
+              {
+                title: "Outreach Cadence",
+                content: [
+                  "A 4-step sequence over 10 days: intro email (Day 0), value add (Day 2), phone call (Day 4), breakup email (Day 7)",
+                  "Click \u201cCreate Cadence Sequence\u201d to add it to your Sequences page \u2014 it only needs to be created once",
+                  "Use \u201cStart Cadence\u201d to enroll any opportunity into the sequence and auto-schedule the touches",
+                ],
+              },
+              {
+                title: "Email Templates",
+                content: [
+                  "6 default templates covering the full sales cycle: Buyer Intro, Post-Meeting Recap, Sample Offer, Vendor Setup Nudge, Reorder Check-In, and Breakup Email",
+                  "Click \u201cSeed All Missing\u201d to create all templates at once, or seed them individually",
+                  "Green checkmarks mean the template already exists \u2014 you can edit them on the Sequences page",
+                  "Each template is tagged to a pipeline stage so the AI knows when to suggest it",
+                ],
+              },
+              {
+                title: "Tips",
+                content: [
+                  "Customize the templates after seeding \u2014 add your own voice and specific product details",
+                  "The AI email generator on the Playbook tab uses these templates as a starting point",
+                  "Always follow up within 48 hours of a meeting \u2014 the Post-Meeting Recap template is designed for this",
+                ],
+              },
+            ]}
+          />
+        </div>
         <div className="rounded-xl border border-slate-700 bg-slate-800 p-5">
           <div className="space-y-2 mb-4">
             {DEFAULT_CADENCE.steps.map((step, i) => (
@@ -931,8 +1029,44 @@ export default function GrowthOpsPage() {
     <div>
       {/* Header */}
       <div className="mb-4">
-        <h1 className="text-2xl font-bold text-white">Growth Ops</h1>
-        <p className="mt-1 text-sm text-slate-400 max-w-2xl">{PLAYBOOK_INTRO}</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-white">Growth Ops</h1>
+            <p className="mt-1 text-sm text-slate-400 max-w-2xl">{PLAYBOOK_INTRO}</p>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <HelpPanel
+              pageKey="growth-ops"
+              tagline="Your execution engine. Strategy means nothing without daily action. This page turns the playbook into tasks, cadences, and measurable metrics."
+              sections={[
+                {
+                  title: "What it is",
+                  content: [
+                    "Growth Ops is the operating system for BullFit retail sales. It combines a reference playbook, daily execution blocks, live metrics, and email templates into one hub.",
+                  ],
+                },
+                {
+                  title: "The four tabs",
+                  content: [
+                    "Execute \u2014 Run your daily Morning/Midday/EOD blocks. Each block creates tasks and links you straight to Pipeline, Tasks, and Calls",
+                    "Playbook \u2014 The full reference guide: what to do at every stage, buyer pitch, outreach cadence, close-rate tips, and stalled deal fix list",
+                    "Metrics \u2014 Live weekly metrics pulled from your CRM data plus an AI-generated executive summary",
+                    "Templates \u2014 Seed 6 default email templates and a 10-day outreach cadence sequence in one click",
+                  ],
+                },
+                {
+                  title: "How to use it daily",
+                  content: [
+                    "Open this page every morning and run the Morning Block first",
+                    "Before lunch, run Midday Block to check pipeline health and follow up on stalled deals",
+                    "At end of day, run EOD Block to plan tomorrow and log activities",
+                    "If any deals are stalled 14+ days, use the Stalled Deal Wizard on the Execute tab to work through the 7-step fix list",
+                  ],
+                },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Purpose */}
