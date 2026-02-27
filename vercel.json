@@ -1,0 +1,15 @@
+{
+  "crons": [
+    { "path": "/api/shopify/sync/incremental", "schedule": "0 */2 * * *" },
+    { "path": "/api/shopify/sync/full", "schedule": "0 2 * * *" },
+    { "path": "/api/shopify/sync/sales", "schedule": "0 3 * * *" },
+    { "path": "/api/forecast/run/daily", "schedule": "0 6 * * *" },
+    { "path": "/api/inventory/snapshot", "schedule": "10 6 * * *" },
+    { "path": "/api/forecast/run/accuracy", "schedule": "0 7 * * 1" },
+    { "path": "/api/competitor-intel/run/snapshot-fetch", "schedule": "0 6 * * *" },
+    { "path": "/api/competitor-intel/run/extract", "schedule": "30 6 * * *" },
+    { "path": "/api/competitor-intel/run/diff", "schedule": "0 7 * * *" },
+    { "path": "/api/competitor-intel/run/insights-weekly", "schedule": "0 7 * * 1" },
+    { "path": "/api/competitor-intel/run/recommendations-weekly", "schedule": "30 7 * * 1" }
+  ]
+}
