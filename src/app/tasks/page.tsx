@@ -1,31 +1,42 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { getTasks, createTask, completeTask, deleteTask } from "@/lib/api";
-import type { Task, TaskInput } from "@/lib/api";
+import type { Task } from "@/lib/api";
 import PriorityBadge from "@/components/shared/PriorityBadge";
 import HelpPanel from "@/components/HelpPanel";
 
-export default function TasksPage() {
+type FilterType = "all" | "pending" | "completed" | "overdue" | "today";
+
+function TasksContent() {
+  const searchParams = useSearchParams();
+  const urlFilter = searchParams.get("filter") as FilterType | null;
+
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<"all" | "pending" | "completed">("pending");
+  const [filter, setFilter] = useState<FilterType>(() => {
+    if (urlFilter === "overdue" || urlFilter === "today") return urlFilter;
+    if (urlFilter === "pending" || urlFilter === "completed" || urlFilter === "all") return urlFilter;
+    return "pending";
+  });
   const [showAddForm, setShowAddForm] = useState(false);
   const [newTask, setNewTask] = useState({ title: "", description: "", priority: "medium", due_date: "" });
 
+  // For overdue/today filters we always fetch pending, then filter client-side
+  const apiStatus = filter === "overdue" || filter === "today" ? "pending" : filter === "all" ? undefined : filter;
+
   const fetchTasks = useCallback(async () => {
     try {
-      const data = await getTasks({
-        status: filter === "all" ? undefined : filter,
-      });
+      const data = await getTasks({ status: apiStatus });
       setTasks(data);
     } catch (err) {
       console.error("Failed to fetch tasks", err);
     } finally {
       setLoading(false);
     }
-  }, [filter]);
+  }, [apiStatus]);
 
   useEffect(() => {
     fetchTasks();
@@ -68,10 +79,33 @@ export default function TasksPage() {
     }
   }
 
+  // Client-side filter for overdue / today
+  const todayStr = new Date().toISOString().split("T")[0];
+  const filteredTasks = tasks.filter((t) => {
+    if (filter === "overdue") {
+      return t.status === "pending" && t.due_date && t.due_date < todayStr;
+    }
+    if (filter === "today") {
+      return t.status === "pending" && t.due_date && t.due_date.startsWith(todayStr);
+    }
+    return true; // "all", "pending", "completed" already handled by API
+  });
+
   const pendingCount = tasks.filter((t) => t.status === "pending").length;
   const overdueCount = tasks.filter(
-    (t) => t.status === "pending" && t.due_date && new Date(t.due_date) < new Date()
+    (t) => t.status === "pending" && t.due_date && t.due_date < todayStr
   ).length;
+  const todayCount = tasks.filter(
+    (t) => t.status === "pending" && t.due_date && t.due_date.startsWith(todayStr)
+  ).length;
+
+  const FILTERS: { id: FilterType; label: string; count?: number }[] = [
+    { id: "pending", label: "Pending", count: pendingCount },
+    { id: "overdue", label: "Overdue", count: overdueCount },
+    { id: "today", label: "Today", count: todayCount },
+    { id: "completed", label: "Completed" },
+    { id: "all", label: "All" },
+  ];
 
   return (
     <div>
@@ -115,18 +149,25 @@ export default function TasksPage() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex gap-2">
-        {(["pending", "completed", "all"] as const).map((f) => (
+      <div className="mb-6 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors capitalize ${
-              filter === f
-                ? "bg-indigo-600 text-white"
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              filter === f.id
+                ? f.id === "overdue"
+                  ? "bg-red-600 text-white"
+                  : "bg-indigo-600 text-white"
                 : "bg-slate-800 text-slate-300 hover:bg-slate-700"
             }`}
           >
-            {f}
+            {f.label}
+            {f.count !== undefined && f.count > 0 && (
+              <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
+                {f.count}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -181,23 +222,29 @@ export default function TasksPage() {
       {/* Task List */}
       {loading ? (
         <div className="text-center text-slate-400 py-12">Loading...</div>
-      ) : tasks.length === 0 ? (
+      ) : filteredTasks.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-400">
-            {filter === "pending" ? "No pending tasks!" : "No tasks found."}
+            {filter === "pending"
+              ? "No pending tasks!"
+              : filter === "overdue"
+              ? "No overdue tasks \u2014 you\u2019re caught up!"
+              : filter === "today"
+              ? "No tasks due today."
+              : "No tasks found."}
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {tasks.map((task) => {
-            const isOverdue = task.status === "pending" && task.due_date && new Date(task.due_date) < new Date();
+          {filteredTasks.map((task) => {
+            const isOverdue = task.status === "pending" && task.due_date && task.due_date < todayStr;
 
             return (
               <div
                 key={task.id}
                 className={`flex items-center gap-3 rounded-xl border border-slate-700 bg-slate-800 p-4 transition-colors hover:border-slate-600 ${
                   task.status === "completed" ? "opacity-50" : ""
-                }`}
+                } ${isOverdue ? "border-red-700/40" : ""}`}
               >
                 <button
                   onClick={() => task.status !== "completed" && handleComplete(task.id)}
@@ -207,7 +254,7 @@ export default function TasksPage() {
                       : "border-slate-600 hover:border-indigo-500"
                   }`}
                 >
-                  {task.status === "completed" && "✓"}
+                  {task.status === "completed" && "\u2713"}
                 </button>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-medium ${task.status === "completed" ? "line-through text-slate-500" : "text-white"}`}>
@@ -223,8 +270,9 @@ export default function TasksPage() {
                       </Link>
                     )}
                     {task.due_date && (
-                      <span className={`text-xs ${isOverdue ? "text-red-400" : "text-slate-500"}`}>
-                        Due: {new Date(task.due_date).toLocaleDateString()}
+                      <span className={`text-xs ${isOverdue ? "text-red-400 font-medium" : "text-slate-500"}`}>
+                        {isOverdue ? "Overdue: " : "Due: "}
+                        {new Date(task.due_date).toLocaleDateString()}
                       </span>
                     )}
                   </div>
@@ -242,5 +290,13 @@ export default function TasksPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function TasksPage() {
+  return (
+    <Suspense fallback={<div className="text-center text-slate-400 py-12">Loading...</div>}>
+      <TasksContent />
+    </Suspense>
   );
 }

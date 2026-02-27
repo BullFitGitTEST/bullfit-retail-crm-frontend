@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "retail-crm",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "cd /Users/cheesedog/bullfit-retail-crm-frontend && npm run dev"],
+      "port": 3000
+    }
+  ]
+}

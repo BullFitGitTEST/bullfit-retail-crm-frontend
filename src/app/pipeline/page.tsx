@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   getOpportunityPipeline,
   moveOpportunityStage,
@@ -10,12 +11,20 @@ import {
 import type { Opportunity, OpportunityPipelineView, OpportunityStage, StageGateError } from "@/lib/api";
 import HelpPanel from "@/components/HelpPanel";
 
-export default function PipelinePage() {
+type PipelineFilter = "all" | "stalled" | "no_next_step";
+
+function PipelineContent() {
+  const searchParams = useSearchParams();
+  const urlFilter = searchParams.get("filter") as PipelineFilter | null;
+
   const [pipeline, setPipeline] = useState<OpportunityPipelineView>({});
   const [loading, setLoading] = useState(true);
   const [dragItem, setDragItem] = useState<string | null>(null);
   const [dragOverStage, setDragOverStage] = useState<string | null>(null);
   const [gateToast, setGateToast] = useState<{ oppTitle: string; missing: StageGateError["missing_requirements"] } | null>(null);
+  const [activeFilter, setActiveFilter] = useState<PipelineFilter>(
+    () => (urlFilter === "stalled" || urlFilter === "no_next_step") ? urlFilter : "all"
+  );
 
   const fetchPipeline = useCallback(async () => {
     try {
@@ -31,6 +40,31 @@ export default function PipelinePage() {
   useEffect(() => {
     fetchPipeline();
   }, [fetchPipeline]);
+
+  // Stalled detection: updated_at > 14 days ago
+  const STALL_DAYS = 14;
+  const stallCutoff = new Date();
+  stallCutoff.setDate(stallCutoff.getDate() - STALL_DAYS);
+  const stallCutoffISO = stallCutoff.toISOString();
+
+  function isStalled(opp: Opportunity): boolean {
+    return opp.updated_at < stallCutoffISO;
+  }
+
+  function isMissingNextStep(opp: Opportunity): boolean {
+    return !opp.next_step_date;
+  }
+
+  function shouldShow(opp: Opportunity): boolean {
+    if (activeFilter === "stalled") return isStalled(opp);
+    if (activeFilter === "no_next_step") return isMissingNextStep(opp);
+    return true;
+  }
+
+  // Counts for badges
+  const allOpps = Object.values(pipeline).flat();
+  const stalledCount = allOpps.filter(isStalled).length;
+  const noNextStepCount = allOpps.filter(isMissingNextStep).length;
 
   function handleDragStart(e: React.DragEvent, oppId: string) {
     setDragItem(oppId);
@@ -53,7 +87,6 @@ export default function PipelinePage() {
 
     if (!dragItem) return;
 
-    // Find which stage the item is currently in
     let currentStage = "";
     let opp: Opportunity | undefined;
     for (const [stage, opps] of Object.entries(pipeline)) {
@@ -93,12 +126,11 @@ export default function PipelinePage() {
           oppTitle: opp.title,
           missing: err.gateError.missing_requirements,
         });
-        // Auto-dismiss after 5 seconds
         setTimeout(() => setGateToast(null), 5000);
       } else {
         console.error("Failed to move opportunity", err);
       }
-      fetchPipeline(); // revert
+      fetchPipeline();
     }
   }
 
@@ -129,6 +161,12 @@ export default function PipelinePage() {
       </div>
     );
   }
+
+  const FILTERS: { id: PipelineFilter; label: string; count?: number; color?: string }[] = [
+    { id: "all", label: "All Deals" },
+    { id: "stalled", label: "Stalled 14+ Days", count: stalledCount, color: "amber" },
+    { id: "no_next_step", label: "No Next Step", count: noNextStepCount, color: "red" },
+  ];
 
   return (
     <div>
@@ -181,6 +219,32 @@ export default function PipelinePage() {
         </div>
       </div>
 
+      {/* Pipeline Filters */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        {FILTERS.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setActiveFilter(f.id)}
+            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeFilter === f.id
+                ? f.color === "amber"
+                  ? "bg-amber-600 text-white"
+                  : f.color === "red"
+                  ? "bg-red-600 text-white"
+                  : "bg-indigo-600 text-white"
+                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+            }`}
+          >
+            {f.label}
+            {f.count !== undefined && f.count > 0 && (
+              <span className="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-[10px]">
+                {f.count}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Stage Gate Toast */}
       {gateToast && (
         <div className="mb-4 rounded-lg border border-amber-700/50 bg-amber-900/20 px-4 py-3 flex items-start gap-3">
@@ -210,7 +274,8 @@ export default function PipelinePage() {
       <div className="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
         <div className="flex gap-2 sm:gap-3" style={{ minWidth: "1800px" }}>
           {OPPORTUNITY_STAGES.map((stage) => {
-            const stageOpps = pipeline[stage.id] || [];
+            const allStageOpps = pipeline[stage.id] || [];
+            const stageOpps = allStageOpps.filter(shouldShow);
             const stageValue = stageOpps.reduce(
               (sum, o) => sum + (o.estimated_value || 0),
               0
@@ -236,6 +301,9 @@ export default function PipelinePage() {
                     </h3>
                     <span className="rounded-full bg-slate-700 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
                       {stageOpps.length}
+                      {activeFilter !== "all" && allStageOpps.length !== stageOpps.length && (
+                        <span className="text-slate-500">/{allStageOpps.length}</span>
+                      )}
                     </span>
                   </div>
                   {stageValue > 0 && (
@@ -249,56 +317,84 @@ export default function PipelinePage() {
                 <div className="flex-1 space-y-2 overflow-y-auto max-h-[55vh] sm:max-h-[60vh]">
                   {stageOpps.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-slate-600 p-3 text-center text-[10px] text-slate-500">
-                      Drop here
+                      {activeFilter !== "all" ? "None matching filter" : "Drop here"}
                     </div>
                   ) : (
-                    stageOpps.map((opp) => (
-                      <div
-                        key={opp.id}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, opp.id)}
-                        className={`rounded-lg border border-slate-700 bg-slate-800 p-2 sm:p-2.5 cursor-grab active:cursor-grabbing transition-all hover:border-slate-600 ${
-                          dragItem === opp.id ? "opacity-50" : ""
-                        }`}
-                      >
-                        <Link
-                          href={`/opportunities/${opp.id}`}
-                          className="text-[11px] sm:text-xs font-medium text-white hover:text-indigo-400 transition-colors block truncate"
+                    stageOpps.map((opp) => {
+                      const oppIsStalled = isStalled(opp);
+                      const oppNoNextStep = isMissingNextStep(opp);
+
+                      return (
+                        <div
+                          key={opp.id}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, opp.id)}
+                          className={`rounded-lg border bg-slate-800 p-2 sm:p-2.5 cursor-grab active:cursor-grabbing transition-all hover:border-slate-600 ${
+                            dragItem === opp.id ? "opacity-50" : ""
+                          } ${
+                            oppIsStalled
+                              ? "border-amber-600/50"
+                              : oppNoNextStep
+                              ? "border-red-600/50"
+                              : "border-slate-700"
+                          }`}
                         >
-                          {opp.title}
-                        </Link>
-                        <p className="mt-0.5 text-[10px] text-slate-400 truncate">
-                          {opp.account_name}
-                        </p>
-                        <div className="mt-1.5 flex items-center justify-between text-[10px]">
-                          {opp.estimated_value ? (
-                            <span className="text-emerald-400 font-medium">
-                              ${opp.estimated_value.toLocaleString()}
-                            </span>
-                          ) : (
-                            <span className="text-slate-500">No value</span>
+                          <Link
+                            href={`/opportunities/${opp.id}`}
+                            className="text-[11px] sm:text-xs font-medium text-white hover:text-indigo-400 transition-colors block truncate"
+                          >
+                            {opp.title}
+                          </Link>
+                          <p className="mt-0.5 text-[10px] text-slate-400 truncate">
+                            {opp.account_name}
+                          </p>
+                          <div className="mt-1.5 flex items-center justify-between text-[10px]">
+                            {opp.estimated_value ? (
+                              <span className="text-emerald-400 font-medium">
+                                ${opp.estimated_value.toLocaleString()}
+                              </span>
+                            ) : (
+                              <span className="text-slate-500">No value</span>
+                            )}
+                            {opp.next_step_date ? (
+                              <span
+                                className={`${
+                                  new Date(opp.next_step_date) < new Date()
+                                    ? "text-red-400"
+                                    : "text-slate-500"
+                                }`}
+                              >
+                                {new Date(
+                                  opp.next_step_date
+                                ).toLocaleDateString()}
+                              </span>
+                            ) : (
+                              <span className="text-red-400 font-medium">No next step</span>
+                            )}
+                          </div>
+                          {/* Stalled / No Next Step badges */}
+                          {(oppIsStalled || oppNoNextStep) && (
+                            <div className="mt-1 flex gap-1">
+                              {oppIsStalled && (
+                                <span className="rounded bg-amber-800/30 px-1.5 py-0.5 text-[9px] text-amber-300">
+                                  Stalled
+                                </span>
+                              )}
+                              {oppNoNextStep && (
+                                <span className="rounded bg-red-800/30 px-1.5 py-0.5 text-[9px] text-red-300">
+                                  No next step
+                                </span>
+                              )}
+                            </div>
                           )}
-                          {opp.next_step_date && (
-                            <span
-                              className={`${
-                                new Date(opp.next_step_date) < new Date()
-                                  ? "text-red-400"
-                                  : "text-slate-500"
-                              }`}
-                            >
-                              {new Date(
-                                opp.next_step_date
-                              ).toLocaleDateString()}
-                            </span>
+                          {opp.location_city && opp.location_state && (
+                            <p className="mt-1 text-[10px] text-slate-500 truncate">
+                              {opp.location_city}, {opp.location_state}
+                            </p>
                           )}
                         </div>
-                        {opp.location_city && opp.location_state && (
-                          <p className="mt-1 text-[10px] text-slate-500 truncate">
-                            {opp.location_city}, {opp.location_state}
-                          </p>
-                        )}
-                      </div>
-                    ))
+                      );
+                    })
                   )}
                 </div>
               </div>
@@ -307,5 +403,13 @@ export default function PipelinePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function PipelinePage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><div className="text-slate-400">Loading pipeline...</div></div>}>
+      <PipelineContent />
+    </Suspense>
   );
 }
