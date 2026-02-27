@@ -13,6 +13,7 @@ const links = [
   { href: "/calls", label: "Calls" },
   { href: "/reporting", label: "Reports" },
   { href: "/sequences", label: "Sequences" },
+  { href: "/growth-ops", label: "Playbook" },
 ];
 
 export default function Navbar() {
