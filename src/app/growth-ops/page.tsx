@@ -1026,7 +1026,7 @@ export default function GrowthOpsPage() {
   const [activeTab, setActiveTab] = useState<GrowthOpsTab>("execute");
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       {/* Header */}
       <div className="mb-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

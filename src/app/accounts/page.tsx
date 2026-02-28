@@ -41,7 +41,7 @@ export default function AccountsPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       <div className="mb-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>

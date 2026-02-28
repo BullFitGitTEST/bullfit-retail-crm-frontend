@@ -151,7 +151,7 @@ export default function ProspectDetailPage() {
   }
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       {/* Back link */}
       <Link href="/prospects" className="text-sm text-indigo-400 hover:text-indigo-300 mb-4 inline-block">
         &larr; Back to Prospects

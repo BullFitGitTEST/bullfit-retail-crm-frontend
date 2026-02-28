@@ -295,8 +295,10 @@ function TasksContent() {
 
 export default function TasksPage() {
   return (
-    <Suspense fallback={<div className="text-center text-slate-400 py-12">Loading...</div>}>
-      <TasksContent />
-    </Suspense>
+    <div className="mx-auto max-w-7xl">
+      <Suspense fallback={<div className="text-center text-slate-400 py-12">Loading...</div>}>
+        <TasksContent />
+      </Suspense>
+    </div>
   );
 }

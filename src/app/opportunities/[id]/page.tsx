@@ -130,7 +130,7 @@ export default function OpportunityDetailPage() {
     : 0;
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       <Link
         href={`/accounts/${opp.account_id}`}
         className="text-sm text-indigo-400 hover:text-indigo-300 mb-4 inline-block"

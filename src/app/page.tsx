@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const visibleActions = showAllActions ? actions : actions.slice(0, 10);
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       <div className="mb-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>

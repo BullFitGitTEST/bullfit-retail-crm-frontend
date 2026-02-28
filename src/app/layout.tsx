@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import Navbar from "@/components/Navbar";
+import SidebarLayout from "@/components/sidebar/SidebarLayout";
 import "./globals.css";
 
 const inter = Inter({
@@ -21,10 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-sans antialiased bg-slate-900 text-slate-200`}>
-        <Navbar />
-        <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-          {children}
-        </main>
+        <SidebarLayout>{children}</SidebarLayout>
       </body>
     </html>
   );

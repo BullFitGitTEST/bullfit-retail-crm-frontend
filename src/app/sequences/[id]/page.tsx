@@ -130,7 +130,7 @@ export default function SequenceDetailPage() {
   };
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       {/* Header */}
       <div className="mb-6">
         <Link href="/sequences" className="text-xs text-indigo-400 hover:text-indigo-300 mb-2 inline-block">

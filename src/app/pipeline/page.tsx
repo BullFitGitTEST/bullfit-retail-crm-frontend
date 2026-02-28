@@ -408,8 +408,10 @@ function PipelineContent() {
 
 export default function PipelinePage() {
   return (
-    <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><div className="text-slate-400">Loading pipeline...</div></div>}>
-      <PipelineContent />
-    </Suspense>
+    <div className="mx-auto max-w-7xl">
+      <Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center"><div className="text-slate-400">Loading pipeline...</div></div>}>
+        <PipelineContent />
+      </Suspense>
+    </div>
   );
 }

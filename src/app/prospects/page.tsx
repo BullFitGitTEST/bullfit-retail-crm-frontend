@@ -12,9 +12,11 @@ import HelpPanel from "@/components/HelpPanel";
 
 export default function ProspectsPage() {
   return (
-    <Suspense fallback={<div className="text-slate-400 py-12 text-center">Loading...</div>}>
-      <ProspectsContent />
-    </Suspense>
+    <div className="mx-auto max-w-7xl">
+      <Suspense fallback={<div className="text-slate-400 py-12 text-center">Loading...</div>}>
+        <ProspectsContent />
+      </Suspense>
+    </div>
   );
 }
 

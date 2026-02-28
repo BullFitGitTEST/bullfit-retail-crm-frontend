@@ -146,8 +146,9 @@ BEGIN
       'ro_shopify_webhook_events'
     ])
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', 'allow_all_' || tbl, tbl);
     EXECUTE format(
-      'CREATE POLICY IF NOT EXISTS %I ON %I FOR ALL USING (true) WITH CHECK (true)',
+      'CREATE POLICY %I ON %I FOR ALL USING (true) WITH CHECK (true)',
       'allow_all_' || tbl, tbl
     );
   END LOOP;

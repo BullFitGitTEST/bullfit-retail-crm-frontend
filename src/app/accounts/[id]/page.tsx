@@ -86,7 +86,7 @@ export default function AccountDetailPage() {
   ];
 
   return (
-    <div>
+    <div className="mx-auto max-w-7xl">
       <Link
         href="/accounts"
         className="text-sm text-indigo-400 hover:text-indigo-300 mb-4 inline-block"
