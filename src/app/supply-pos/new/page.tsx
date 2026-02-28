@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import FeatureFlagGuard from "@/components/retail-ops/FeatureFlagGuard";
 import type { Supplier, SupplierProduct } from "@/lib/supply-pos/types";
 
@@ -131,9 +132,17 @@ function NewPOInner() {
             </h2>
             <div className="space-y-2">
               {suppliers.length === 0 ? (
-                <p className="text-slate-400 text-sm">
-                  No suppliers found. Add a supplier first.
-                </p>
+                <div className="text-center py-8">
+                  <p className="text-slate-400 text-sm mb-3">
+                    No suppliers found. Add a supplier first to create a PO.
+                  </p>
+                  <Link
+                    href="/supply-pos/suppliers"
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+                  >
+                    + Add Supplier
+                  </Link>
+                </div>
               ) : (
                 suppliers.map((s) => (
                   <button
