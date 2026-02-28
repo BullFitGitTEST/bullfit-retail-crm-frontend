@@ -1,24 +1,87 @@
 /**
  * Shopify Admin REST API client with rate limiting and pagination.
  *
+ * Token resolution order:
+ *   1. Encrypted OAuth token from Supabase (ro_shopify_credentials)
+ *   2. Fallback to SHOPIFY_ADMIN_API_TOKEN env var
+ *
  * Rate limit: 40-request bucket, 2 requests/second leak rate.
  * On 429, exponential backoff with up to 3 retries.
  */
 
-const SHOPIFY_STORE_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || "";
-const SHOPIFY_ADMIN_API_TOKEN = process.env.SHOPIFY_ADMIN_API_TOKEN || "";
+import { supabaseAdmin } from "@/lib/supabase";
+import { decryptToken } from "./encryption";
+
 const SHOPIFY_API_VERSION = process.env.SHOPIFY_API_VERSION || "2024-01";
 
 const MAX_RETRIES = 3;
 const BASE_DELAY_MS = 1000;
 
-function getBaseUrl(): string {
-  return `https://${SHOPIFY_STORE_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}`;
+// ─── Dynamic token + domain resolution ──────────────────────────────
+
+let _cachedToken: string | null = null;
+let _cachedDomain: string | null = null;
+let _cacheExpiry = 0;
+const CACHE_TTL_MS = 60_000; // re-check every 60s
+
+/**
+ * Resolve Shopify access token:
+ *  1. Check Supabase for encrypted OAuth token
+ *  2. Fall back to SHOPIFY_ADMIN_API_TOKEN env var
+ */
+async function resolveCredentials(): Promise<{
+  token: string;
+  domain: string;
+}> {
+  const now = Date.now();
+  if (_cachedToken && _cachedDomain && now < _cacheExpiry) {
+    return { token: _cachedToken, domain: _cachedDomain };
+  }
+
+  // Try OAuth credentials from Supabase
+  try {
+    const { data } = await supabaseAdmin
+      .from("ro_shopify_credentials")
+      .select("store_domain, encrypted_access_token")
+      .limit(1)
+      .maybeSingle();
+
+    if (data?.encrypted_access_token && data?.store_domain) {
+      const token = decryptToken(data.encrypted_access_token);
+      _cachedToken = token;
+      _cachedDomain = data.store_domain;
+      _cacheExpiry = now + CACHE_TTL_MS;
+      return { token, domain: data.store_domain };
+    }
+  } catch {
+    // Table may not exist yet — fall through to env var
+  }
+
+  // Fallback to static env vars
+  const envToken = process.env.SHOPIFY_ADMIN_API_TOKEN || "";
+  const envDomain = process.env.SHOPIFY_STORE_DOMAIN || "";
+  _cachedToken = envToken;
+  _cachedDomain = envDomain;
+  _cacheExpiry = now + CACHE_TTL_MS;
+  return { token: envToken, domain: envDomain };
 }
 
-function getHeaders(): Record<string, string> {
+/** Invalidate the cached token (e.g. after re-auth). */
+export function clearTokenCache() {
+  _cachedToken = null;
+  _cachedDomain = null;
+  _cacheExpiry = 0;
+}
+
+async function getBaseUrl(): Promise<string> {
+  const { domain } = await resolveCredentials();
+  return `https://${domain}/admin/api/${SHOPIFY_API_VERSION}`;
+}
+
+async function getHeaders(): Promise<Record<string, string>> {
+  const { token } = await resolveCredentials();
   return {
-    "X-Shopify-Access-Token": SHOPIFY_ADMIN_API_TOKEN,
+    "X-Shopify-Access-Token": token,
     "Content-Type": "application/json",
   };
 }
@@ -43,11 +106,14 @@ async function shopifyFetch<T>(
 ): Promise<{ data: T; headers: Headers }> {
   await rateLimit();
 
+  const baseUrl = await getBaseUrl();
+  const headers = await getHeaders();
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    const url = path.startsWith("http") ? path : `${getBaseUrl()}${path}`;
+    const url = path.startsWith("http") ? path : `${baseUrl}${path}`;
     const res = await fetch(url, {
       ...options,
-      headers: { ...getHeaders(), ...(options?.headers || {}) },
+      headers: { ...headers, ...(options?.headers || {}) },
     });
 
     if (res.status === 429) {
