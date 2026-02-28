@@ -40,7 +40,10 @@ export default function SupplyPOsPage() {
     try {
       const qs = statusFilter ? `?status=${statusFilter}` : "";
       const res = await fetch(`/api/supply-pos/pos${qs}`);
-      if (res.ok) setPOs(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setPOs(data);
+      }
     } catch (err) {
       console.error("Failed to fetch POs:", err);
     } finally {

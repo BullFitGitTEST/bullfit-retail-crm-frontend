@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import FeatureFlagGuard from "@/components/retail-ops/FeatureFlagGuard";
 import type { SupplyPODetail } from "@/lib/supply-pos/types";
 
 const statusColors: Record<string, string> = {
@@ -17,6 +18,14 @@ const statusColors: Record<string, string> = {
 };
 
 export default function PODetailPage() {
+  return (
+    <FeatureFlagGuard flag="supply_pos">
+      <PODetailInner />
+    </FeatureFlagGuard>
+  );
+}
+
+function PODetailInner() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [po, setPO] = useState<SupplyPODetail | null>(null);

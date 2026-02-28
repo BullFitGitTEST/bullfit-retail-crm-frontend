@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import FeatureFlagGuard from "@/components/retail-ops/FeatureFlagGuard";
 import type { Supplier, SupplierProduct } from "@/lib/supply-pos/types";
 
 interface LineItem {
@@ -13,6 +14,14 @@ interface LineItem {
 }
 
 export default function NewPOPage() {
+  return (
+    <FeatureFlagGuard flag="supply_pos">
+      <NewPOInner />
+    </FeatureFlagGuard>
+  );
+}
+
+function NewPOInner() {
   const router = useRouter();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
@@ -24,16 +33,26 @@ export default function NewPOPage() {
 
   useEffect(() => {
     fetch("/api/supply-pos/suppliers")
-      .then((r) => r.json())
-      .then(setSuppliers)
+      .then((r) => {
+        if (!r.ok) throw new Error("Failed to fetch suppliers");
+        return r.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data)) setSuppliers(data);
+      })
       .catch(console.error);
   }, []);
 
   useEffect(() => {
     if (selectedSupplier) {
       fetch(`/api/supply-pos/supplier-products?supplier_id=${selectedSupplier}`)
-        .then((r) => r.json())
-        .then(setSupplierProducts)
+        .then((r) => {
+          if (!r.ok) throw new Error("Failed to fetch supplier products");
+          return r.json();
+        })
+        .then((data) => {
+          if (Array.isArray(data)) setSupplierProducts(data);
+        })
         .catch(console.error);
     }
   }, [selectedSupplier]);
